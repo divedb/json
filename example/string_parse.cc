@@ -4,12 +4,18 @@
 
 using namespace std;
 
-int main(int argc, char** argv) {
-  string s = "\"\\ud800\\udc00\"";
-  json::ParseState ps(s.begin(), s.end());
+void parse_string(const std::string& s) {
   json::Buffer buf;
+  json::ParseState ps(s.begin(), s.end());
 
-  json::internal_parse_string(ps, buf);
+  cout << json::internal_parse_string(ps, buf) << endl;
+  cout << "[status]: " << static_cast<int>(ps.status) << endl;
+  cout << "[buf]: " << buf << std::endl;
+}
 
-  cout << "buf = " << buf << endl;
+int main(int argc, char** argv) {
+  //   parse_string("\"\\ud800\\udc00\"");
+  //   parse_string("\"\\u\"");
+  //   parse_string("\"\\ud80\"");
+  parse_string("\"\u1234\"");
 }

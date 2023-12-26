@@ -78,7 +78,7 @@ static void internal_string_test(const std::vector<StringTest>& tests) {
     Buffer buf;
     auto& input = test.input;
     ParseState<decltype(input.begin())> ps(input.begin(), input.end());
-    ps = internal_parse_string(ps, buf);
+    internal_parse_string(ps, buf);
 
     EXPECT_EQ(test.expect_status, ps.status) << ":[" << input << "]";
 
@@ -104,16 +104,7 @@ TEST(StringParser, ParseAscii) {
 
 TEST(StringParser, ParseUnicode) {
   std::vector<StringTest> tests{
-      //   {"", 0, Status::kEOF},
-      //   {"\\", 0, Status::kEOF},
-      //   {"\\u", 0, Status::kEOF},
-      //   {"\\ud", 0, Status::kEOF},
-      //   {"\\ud80", 0, Status::kEOF},
-      //   {"\\ud800", 0, Status::kEOF},
-      //   {"\\ud800\\", 0, Status::kEOF},
-      //   {"\\ud800\\u", 0, Status::kEOF},
-      //   {"\\ud800\\u0", 0, Status::kEOF},
-      //   {"\\ud800\\u123", 0, Status::kEOF},
+
       //   {"a", 0, Status::kError},
       //   {"\\c", 0, Status::kError},
       //   {"\\u1234", 0, Status::kError},
@@ -141,6 +132,26 @@ TEST(StringParser, ParseUnicode) {
       {"\"\\udbff\\udfff1\"", "\"\xf4\x8f\xbf\xbf\x31\""}};
 
   internal_string_test(tests);
+}
+
+TEST(StringParser, ParseEOF) {
+  std::vector<StringTest> tests{
+      {"\"", {}, Status::kEOF},
+      {"\"\\\"", {}, Status::kEOF},
+      {"\"\\u\"", {}, Status::kEOF},
+      {"\"\\ud\"", {}, Status::kEOF},
+      {"\"\\ud80", {}, Status::kEOF},
+      {"\"\\ud800\\u\"", {}, Status::kEOF},
+      {"\"\\ud800\\u0\"", {}, Status::kEOF},
+      {"\"\\ud800\\u123", {}, Status::kEOF},
+  };
+
+  internal_string_test(tests);
+}
+
+TEST(StringParser, ParseError) {
+  std::vector<StringTest> tests{{"\"\\ud800\"", {}, Status::kError},
+                                {"\"\\ud800\\\"", {}, Status::kError}};
 }
 
 int main(int argc, char** argv) {
