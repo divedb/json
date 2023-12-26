@@ -65,7 +65,12 @@ inline constexpr void internal_parse_unicode(ParseState<InputIt>& ps,
              is_4_hex_pipe<InputIt>;
         ps.is_ok()) {
       i32 r2 = unicode_to_codepoint(ps.ocursor, ps.ncursor);
-      out_buf.append(UTF8::encode(UTF16::decode(r1, r2)));
+
+      if (is_low_surrogate(r2)) {
+        out_buf.append(UTF8::encode(UTF16::decode(r1, r2)));
+      } else {
+        ps.status = Status::kError;
+      }
     }
   } else {
     ps.status = Status::kError;

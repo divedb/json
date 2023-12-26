@@ -78,9 +78,8 @@ class UTF16 {
  public:
   constexpr static i32 decode(i32 r1, i32 r2) {
     if (!is_high_surrogate(r1) || !is_low_surrogate(r2)) {
-      std::string error =
-          "[UTF16::encode]: invalid unicode: " + std::to_string(r1) +
-          std::to_string(r2);
+      std::string error = "[UTF16::encode]: invalid unicode: [" +
+                          std::to_string(r1) + "," + std::to_string(r2) + "]";
       throw std::invalid_argument(error);
     }
 

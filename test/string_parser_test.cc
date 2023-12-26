@@ -15,65 +15,7 @@ struct StringTest {
   Status expect_status{Status::kOk};
 };
 
-// TEST(StringParser, ParseBMP) {
-//   std::vector<UnicodeTest> tests{{"", 0, Status::kEOF},
-//                                  {"\\", 0, Status::kEOF},
-//                                  {"\\u", 0, Status::kEOF},
-//                                  {"\\u1", 0, Status::kEOF},
-//                                  {"\\uz", 0, Status::kEOF},
-//                                  {"\\u123", 0, Status::kEOF},
-//                                  {"abc", 0, Status::kError},
-//                                  {"\\a", 0, Status::kError},
-//                                  {"\\u123g", 0, Status::kError},
-//                                  {"\\u 1234", 0, Status::kError},
-//                                  {"\\u0000", 0, Status::kOk},
-//                                  {"\\u1234", 0x1234, Status::kOk},
-//                                  {"\\uaeae", 0xaeae, Status::kOk},
-//                                  {"\\uaE1F", 0xae1f, Status::kOk},
-//                                  {"\\ua1b1", 0xa1b1, Status::kOk},
-//                                  {"\\uA1B1", 0xa1b1, Status::kOk},
-//                                  {"\\uFFFF", 0xffff, Status::kOk},
-//                                  {"\\u12341234", 0x1234, Status::kOk},
-//                                  {"\\u1234 ", 0x1234, Status::kOk}};
-
-//   parse_unicode_test(tests, parse_bmp<InputIt>);
-// }
-
-// TEST(StringParser, ParseSurrogate) {
-//   std::vector<UnicodeTest> tests{
-//       {"", 0, Status::kEOF},
-//       {"\\", 0, Status::kEOF},
-//       {"\\u", 0, Status::kEOF},
-//       {"\\ud", 0, Status::kEOF},
-//       {"\\ud80", 0, Status::kEOF},
-//       {"\\ud800", 0, Status::kEOF},
-//       {"\\ud800\\", 0, Status::kEOF},
-//       {"\\ud800\\u", 0, Status::kEOF},
-//       {"\\ud800\\u0", 0, Status::kEOF},
-//       {"\\ud800\\u123", 0, Status::kEOF},
-//       {"a", 0, Status::kError},
-//       {"\\c", 0, Status::kError},
-//       {"\\u1234", 0, Status::kError},
-//       {"\\u8a8a", 0, Status::kError},
-//       {"\\ud7ff", 0, Status::kError},
-//       {"\\udc00", 0, Status::kError},
-//       {"\\ud8001", 0, Status::kError},
-//       {"\\ud800\\c", 0, Status::kError},
-//       {"\\ud800\\u1234", 0, Status::kError},
-//       {"\\ud800\\uxxxx", 0, Status::kError},
-//       {"\\ud800\\u????", 0, Status::kError},
-//       {"\\ud800\\udc0x", 0, Status::kError},
-//       {"\\ud800\\udc00", 0x10000, Status::kOk},
-//       {"\\ud800\\udc01", 0x10001, Status::kOk},
-//       {"\\udb4A\\udf2A", 0xe2b2a, Status::kOk},
-//       {"\\udbff\\udfff", 0x10ffff, Status::kOk},
-//       {"\\udbff\\udfff1", 0x10ffff, Status::kOk},
-//   };
-
-//   parse_unicode_test(tests, parse_surrogate<InputIt>);
-// }
-
-static void internal_string_test(const std::vector<StringTest>& tests) {
+static void internal_parse_string_test(const std::vector<StringTest>& tests) {
   for (auto&& test : tests) {
     Buffer buf;
     auto& input = test.input;
@@ -99,24 +41,11 @@ TEST(StringParser, ParseAscii) {
       {"\"\\t\"", "\"\t\""},      {"\"\\b\"", "\"\b\""},
       {"\"\\\\\"", "\"\\\""},     {"\"\\\"\\\"\"", "\"\"\"\""}};
 
-  internal_string_test(tests);
+  internal_parse_string_test(tests);
 }
 
 TEST(StringParser, ParseUnicode) {
   std::vector<StringTest> tests{
-
-      //   {"a", 0, Status::kError},
-      //   {"\\c", 0, Status::kError},
-      //   {"\\u1234", 0, Status::kError},
-      //   {"\\u8a8a", 0, Status::kError},
-      //   {"\\ud7ff", 0, Status::kError},
-      //   {"\\udc00", 0, Status::kError},
-      //   {"\\ud8001", 0, Status::kError},
-      //   {"\\ud800\\c", 0, Status::kError},
-      //   {"\\ud800\\u1234", 0, Status::kError},
-      //   {"\\ud800\\uxxxx", 0, Status::kError},
-      //   {"\\ud800\\u????", 0, Status::kError},
-      //   {"\\ud800\\udc0x", 0, Status::kError},
       {"\"\\u1234\"", "\"\xe1\x88\xb4\""},
       {"\"\\uaeae\"", "\"\xea\xba\xae\""},
       {"\"\\uaE1F\"", "\"\xea\xb8\x9f\""},
@@ -131,7 +60,7 @@ TEST(StringParser, ParseUnicode) {
       {"\"\\udbff\\udfff\"", "\"\xf4\x8f\xbf\xbf\""},
       {"\"\\udbff\\udfff1\"", "\"\xf4\x8f\xbf\xbf\x31\""}};
 
-  internal_string_test(tests);
+  internal_parse_string_test(tests);
 }
 
 TEST(StringParser, ParseEOF) {
@@ -146,12 +75,23 @@ TEST(StringParser, ParseEOF) {
       {"\"\\ud800\\u123", {}, Status::kEOF},
   };
 
-  internal_string_test(tests);
+  internal_parse_string_test(tests);
 }
 
 TEST(StringParser, ParseError) {
-  std::vector<StringTest> tests{{"\"\\ud800\"", {}, Status::kError},
-                                {"\"\\ud800\\\"", {}, Status::kError}};
+  std::vector<StringTest> tests{
+      {"a", {}, Status::kError},
+      {"\"\\c\"", {}, Status::kError},
+      {"\"\\udc00\"", {}, Status::kError},
+      {"\"\\ud8001\"", {}, Status::kError},
+      {"\"\\ud800\\c\"", {}, Status::kError},
+      {"\"\\ud800\\u1234\"", {}, Status::kError},
+      {"\"\\ud800\\uxxxx\"", {}, Status::kError},
+      {"\"\\ud800\\u????\"", {}, Status::kError},
+      {"\"\\ud800\\udc0x\"", {}, Status::kError},
+  };
+
+  internal_parse_string_test(tests);
 }
 
 int main(int argc, char** argv) {
