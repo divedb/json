@@ -1,3 +1,4 @@
+#include <functional>
 #include <iostream>
 
 #include "json/string_parser.h"
@@ -18,4 +19,6 @@ int main(int argc, char** argv) {
   //   parse_string("\"\\u\"");
   //   parse_string("\"\\ud80\"");
   parse_string("\"\u1234\"");
+
+  function<void(int)> f([](int) {});
 }

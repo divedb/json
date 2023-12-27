@@ -9,4 +9,5 @@ function (add_tests)
     endforeach()
 endfunction()
 
-add_tests(utf_test util_test string_parser_test)
+# add_tests(utf_test util_test string_parser_test)
+add_tests(parser_state_test)

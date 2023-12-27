@@ -68,6 +68,8 @@
         "iterator": "cpp",
         "version": "cpp",
         "complex": "cpp",
-        "memory_resource": "cpp"
+        "memory_resource": "cpp",
+        "deque": "cpp",
+        "span": "cpp"
     }
 }
