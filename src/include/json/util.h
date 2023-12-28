@@ -14,6 +14,8 @@ inline constexpr bool is_hex(int c) {
 
 inline constexpr bool is_digit(int c) { return (c >= '0' && c <= '9'); }
 
+inline constexpr bool is_exponent(int c) { return c == 'e' || c == 'E'; }
+
 unsigned int next_power_of_2(unsigned int n) {
   if (n && !(n & (n - 1))) {
     return n;

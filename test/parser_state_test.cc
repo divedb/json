@@ -11,7 +11,7 @@ TEST(FixedPipe, Ok) {
   state = state | is_4_hex_pipe;
 
   EXPECT_TRUE(state.is_ok());
-  EXPECT_EQ(buf, is_4_hex_pipe.buffer());
+  EXPECT_EQ(buf, state.buffer());
 }
 
 TEST(FixedPipe, Eof) {
@@ -30,7 +30,7 @@ TEST(FixedPipe, Error) {
   state = state | is_4_hex_pipe;
 
   EXPECT_TRUE(state.status == Status::kError);
-  EXPECT_EQ('x', is_4_hex_pipe.back());
+  EXPECT_EQ("123", state.buffer());
 }
 
 TEST(GreedyPipe, Ok) {
@@ -40,8 +40,7 @@ TEST(GreedyPipe, Ok) {
   state = state | is_1_or_more_digits_pipe;
 
   EXPECT_TRUE(state.is_ok());
-  EXPECT_EQ(buf, is_1_or_more_digits_pipe.buffer());
-  EXPECT_EQ('2', is_1_or_more_digits_pipe.back());
+  EXPECT_EQ(buf, state.buffer());
 }
 
 int main(int argc, char** argv) {

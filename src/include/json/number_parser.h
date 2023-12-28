@@ -1,27 +1,75 @@
 #pragma once
 
-#include "json/parse_state.h"
+#include "json/parser_state.h"
 
 namespace json {
 
-// int           = zero / ( digit1-9 *DIGIT )
-template <typename InputIter>
-bool parse_int(InputIter& first, InputIter last, ParseState& ps) {
-  bool has_zero = has_one(first, last, is_zero, ps);
+inline constexpr auto is_zero = is_byte<'0'>;
+inline constexpr auto is_minus = is_byte<'-'>;
+inline auto is_exp_pipe = make_fixed_pipe(is_exponent, 1);
+inline constexpr auto is_dot_pipe = make_fixed_pipe(is_byte<'.'>, 1);
+inline constexpr auto is_optional_minus = make_optional_pipe(is_byte<'-'>, 1);
+inline constexpr auto is_optional_plus = make_optional_pipe(is_byte<'+'>, 1);
 
-  if (ps.state == State::kEOF) {
+// int           = zero ｜ ( digit1-9 *DIGIT )
+template <typename InputIt>
+constexpr bool parse_int(ParserState<InputIt>& state, Buffer& out_buf) {
+  IF_EOF_RETURN(state, false);
+
+  u8 b = state.next();
+
+  if (!is_digit(b)) {
     return false;
   }
 
-  bool has_digit = has_one_or_more(first, last, is_digit, ps);
+  out_buf.push_back(b);
 
-  // case 1: other digits follows 0
-  // case 2: no digits
-  if ((has_zero && has_digit) || (!has_zero && !has_digit)) {
-    ps.state = State::kInvalidNumber;
+  if (is_zero(b)) {
+    IF_EOF_RETURN(state, true);
 
+    // TODO(gc): what next byte will be? [e|E|.|,]
+    if (b = state.next(); is_digit(b)) {
+      return false;
+    }
+
+    state.put(b);
+
+    return true;
+  }
+
+  state = state | is_0_or_more_digits_pipe;
+  out_buf.append(is_0_or_more_digits_pipe.buffer());
+
+  return true;
+}
+
+// frac          = decimal-point 1*DIGIT
+template <typename InputIt>
+constexpr bool parse_frac(ParserState<InputIt>& state, Buffer& out_buf) {
+  if (state = state | is_dot_pipe | is_1_or_more_digits_pipe; !state.is_ok()) {
     return false;
   }
+
+  out_buf.append(is_dot_pipe.buffer());
+  out_buf.append(is_1_or_more_digits_pipe.buffer());
+
+  return true;
+}
+
+// e             = %x65/%x45                    ; e-E
+// exp           = e [ minus | plus ] 1*DIGIT   ;
+template <typename InputIt>
+constexpr bool parse_exponent(ParserState<InputIt>& state, Buffer& out_buf) {
+  if (!state = state | is_exp_pipe | is_optional_minus | is_optional_plus |
+               is_1_or_more_digits_pipe;
+      state.is_ok()) {
+    return false;
+  }
+
+  out_buf.append(is_exp_pipe.buffer());
+  out_buf.append(is_optional_minus.buffer());
+  out_buf.append(is_optional_plus.buffer());
+  out_buf.append(is_1_or_more_digits_pipe.buffer());
 
   return true;
 }
@@ -33,24 +81,52 @@ bool parse_int(InputIter& first, InputIter last, ParseState& ps) {
 // decimal-point = %x2E                         ; .
 // digit1-9      = %x31-39                      ; 1-9
 // e             = %x65/%x45                    ; e-E
-// exp           = e [ minus / plus ] 1*DIGIT   ;
+// exp           = e [ minus | plus ] 1*DIGIT   ;
 // frac          = decimal-point 1*DIGIT
 // int           = zero / ( digit1-9 *DIGIT )
 // minus         = %x2D                         ; -
 // plus          = %x2B                         ; +
 // zero          = %x30                         ; 0
-template <typename InputIter>
-bool parse_number(InputIter& first, InputIter last, ParseState& ps,
-                  JsonValue& out) {
-  using VT = typename std::iterator_traits<InputIter>::value_type;
+template <typename InputIt>
+constexpr bool parse_number(ParserState<InputIt>& state, Buffer& out_buf) {
+  EOF_CHECK(state);
 
-  InputIter init = first;
+  int sign = 1;
+  u8 b = state.next();
 
-  bool has_minus = has_one(first, last, is_minus, ps);
-
-  if (!parse_int(first, last, ps)) {
+  // Must be minus or digits.
+  if (is_minus(b)) {
+    sign = -1;
+    out_buf.push_back(b);
+  } else if (!is_digit(b)) {
     return false;
   }
+
+  state.put(b);
+
+  // Parse `int` part.
+  if (!parse_number(state, out_buf)) {
+    return false;
+  }
+
+  IF_EOF_RETURN(state, true);
+
+  // Parse optional frac part.
+  b = state.next();
+  bool has_frac = false;
+
+  if (is_decimal(b)) {
+    state.put(b);
+
+    if (!parse_frac(state, out_buf)) {
+      return false;
+    }
+
+    has_frac = true;
+  }
+
+  // Parse optional exponent.
+  IF_EOF_RETURN(state, true);
 
   bool has_frac = has_one(first, last, is_decimal_point, ps);
 
