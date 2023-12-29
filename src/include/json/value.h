@@ -5,7 +5,13 @@
 #include <type_traits>
 #include <variant>
 
+#include "json/types.h"
+
 namespace json {
+
+using String = Buffer;
+using BigInteger = long long;
+using LongDouble = long double;
 
 enum JsonType : uint8_t {
   kInvalid,
@@ -17,14 +23,11 @@ enum JsonType : uint8_t {
   kArray
 };
 
-using BigInteger = long long;
-using String = std::string;
-
 struct Number {
  public:
   Number() = default;
   explicit Number(BigInteger value) : is_integer_{true}, value_{value} {}
-  explicit Number(double value) : is_integer_{false}, value_{value} {}
+  explicit Number(LongDouble value) : is_integer_{false}, value_{value} {}
 
   bool is_integer() const { return is_integer_; }
 
@@ -35,7 +38,7 @@ struct Number {
     }
 
     if constexpr (std::is_same_v<T, double>) {
-      return std::get<double>(value_);
+      return std::get<LongDouble>(value_);
     }
   }
 
@@ -49,7 +52,7 @@ struct Number {
 
  private:
   bool is_integer_;
-  std::variant<BigInteger, double> value_;
+  std::variant<BigInteger, LongDouble> value_;
 };
 
 class JsonValue {

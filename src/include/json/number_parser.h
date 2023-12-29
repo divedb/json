@@ -1,6 +1,11 @@
 #pragma once
 
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
+
 #include "json/parser_state.h"
+#include "json/value.h"
 
 namespace json {
 
@@ -69,7 +74,7 @@ constexpr bool parse_exponent(ParserState<InputIt>& state) {
 // plus          = %x2B                         ; +
 // zero          = %x30                         ; 0
 template <typename InputIt>
-constexpr bool parse_number(ParserState<InputIt>& state) {
+constexpr bool parse_number(ParserState<InputIt>& state, bool& has_frac) {
   state = state | is_opt_minus_pipe;
 
   if (!parse_int(state)) {
@@ -81,7 +86,7 @@ constexpr bool parse_number(ParserState<InputIt>& state) {
   // Parse optional frac part.
   // Here, pipes > 0 means the state passes through at least 1 pipe.
   // That is `dot pipe`.
-  if (!parse_frac(state) && state.pipes > 0) {
+  if (has_frac = parse_frac(state); !has_frac && state.pipes > 0) {
     return false;
   }
 
@@ -91,6 +96,47 @@ constexpr bool parse_number(ParserState<InputIt>& state) {
   }
 
   return true;
+}
+
+// float       strtof( const char* str, char** str_end );
+// double      strtod( const char* str, char** str_end );
+// long double strtold( const char* str, char** str_end );
+//
+// Interprets a floating point value in a byte string pointed to by str.
+// Function discards any whitespace characters (as determined by std::isspace)
+// until first non-whitespace character is found. Then it takes as many
+// characters as possible to form a valid floating-point representation and
+// converts them to a floating-point value. The valid floating-point value can
+// be one of the following:
+template <typename InputIt>
+constexpr JsonValue parse_number(ParserState<InputIt>& state) {
+  bool has_frac;
+  JsonValue json_value;
+
+  if (parse_number(state, has_frac)) {
+    auto base = state.buf.begin();
+    Buffer buf(base, base + state.cursor);
+
+    if (has_frac) {
+      if (auto res = std::strtold(buf, nullptr); res != std::HUGE_VALL) {
+        return JsonValue{Number(res)};
+      }
+
+      state.error = Error{ErrorType::kHugeVal, buf};
+    } else {
+      auto res = std::strtoll(buf, nullptr);
+
+      if (res == LLONG_MIN) {
+        state.error = Error{ErrorType::kUnderflow, buf};
+      } else if (res == LLONG_MAX) {
+        state.error = Error{ErrorType::kOverflow, buf};
+      } else {
+        json_value = JsonValue{Number(res)};
+      }
+    }
+  }
+
+  return json_value;
 }
 
 }  // namespace json

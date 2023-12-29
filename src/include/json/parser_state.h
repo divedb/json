@@ -4,6 +4,7 @@
 #include <deque>
 #include <iostream>
 
+#include "json/error.h"
 #include "json/types.h"
 #include "json/util.h"
 
@@ -25,12 +26,12 @@ class ParserState {
       : line_number(0),
         pipes(0),
         status(status),
-        error_(kSentinel),
         cache_(kSentinel),
+        cursor(0),
+        buf(kBufSize, 0),
         first_(first),
         last_(last),
-        cursor_(0),
-        buffer_(kBufSize, 0) {}
+  {}
 
   constexpr void put(u8 b) {
     assert(cache_ == kSentinel);
@@ -38,16 +39,16 @@ class ParserState {
   }
 
   constexpr u8 back() const {
-    assert(cursor_ != 0);
+    assert(cursor != 0);
 
-    return buffer_[cursor_ - 1];
+    return buf[cursor - 1];
   }
 
   constexpr u8 pop_back() {
-    assert(cursor_ != 0);
-    cursor_--;
+    assert(cursor != 0);
+    cursor--;
 
-    return buffer_[cursor_];
+    return buf[cursor];
   }
 
   constexpr u8 next() {
@@ -68,23 +69,19 @@ class ParserState {
   constexpr bool is_ok() const noexcept { return status == Status::kOk; }
 
   // Get the consumed bytes when data is piped.
-  Buffer buffer() const noexcept { return buffer_.substr(0, cursor_); }
+  Buffer buffer() const noexcept { return buf.substr(0, cursor); }
 
   int line_number;
   int pipes;
   Status status;
-  value_type error_;
+  Error error;
+  int cursor;
+  Buffer buf;
 
  private:
-  template <std::size_t N, typename Iterator, typename Predicate>
-  friend inline constexpr ParserState<Iterator> has_fixed(ParserState<Iterator>,
-                                                          Predicate&&);
-
   value_type cache_;
   InputIt first_;
   InputIt last_;
-  int cursor_;
-  Buffer buffer_;
 };
 
 #define CHECK_PARSER_STATE(state) \
@@ -116,7 +113,7 @@ inline constexpr ParserState<InputIt> has_fixed(ParserState<InputIt> state,
       state.status = Status::kError;
       break;
     } else {
-      state.buffer_[state.cursor_++] = b;
+      state.buf[state.cursor++] = b;
     }
   }
 
