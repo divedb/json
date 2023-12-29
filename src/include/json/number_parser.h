@@ -4,74 +4,55 @@
 
 namespace json {
 
-inline constexpr auto is_zero = is_byte<'0'>;
-inline constexpr auto is_minus = is_byte<'-'>;
-inline auto is_exp_pipe = make_fixed_pipe(is_exponent, 1);
-inline constexpr auto is_dot_pipe = make_fixed_pipe(is_byte<'.'>, 1);
-inline constexpr auto is_optional_minus = make_optional_pipe(is_byte<'-'>, 1);
-inline constexpr auto is_optional_plus = make_optional_pipe(is_byte<'+'>, 1);
+inline auto is_zero = is_byte<'0'>;
 
 // int           = zero ｜ ( digit1-9 *DIGIT )
 template <typename InputIt>
-constexpr bool parse_int(ParserState<InputIt>& state, Buffer& out_buf) {
+constexpr bool parse_int(ParserState<InputIt>& state) {
   IF_EOF_RETURN(state, false);
 
-  u8 b = state.next();
-
-  if (!is_digit(b)) {
+  if (state = state | is_digit_pipe; !state.is_ok()) {
     return false;
   }
 
-  out_buf.push_back(b);
+  byte b = state.back();
 
   if (is_zero(b)) {
     IF_EOF_RETURN(state, true);
 
-    // TODO(gc): what next byte will be? [e|E|.|,]
-    if (b = state.next(); is_digit(b)) {
+    // Digits can't follow after leading 0.
+    if (state = state | is_digit_pipe; state.is_ok()) {
       return false;
     }
 
-    state.put(b);
+    state.put(state.pop_back());
 
     return true;
   }
 
-  state = state | is_0_or_more_digits_pipe;
-  out_buf.append(is_0_or_more_digits_pipe.buffer());
+  state = state | is_zero_or_more_digits_pipe;
 
   return true;
 }
 
 // frac          = decimal-point 1*DIGIT
 template <typename InputIt>
-constexpr bool parse_frac(ParserState<InputIt>& state, Buffer& out_buf) {
-  if (state = state | is_dot_pipe | is_1_or_more_digits_pipe; !state.is_ok()) {
-    return false;
-  }
+constexpr bool parse_frac(ParserState<InputIt>& state) {
+  state.pipes = 0;
+  state = state | is_dot_pipe | is_digit_pipe | is_zero_or_more_digits_pipe;
 
-  out_buf.append(is_dot_pipe.buffer());
-  out_buf.append(is_1_or_more_digits_pipe.buffer());
-
-  return true;
+  return state.is_ok();
 }
 
 // e             = %x65/%x45                    ; e-E
 // exp           = e [ minus | plus ] 1*DIGIT   ;
 template <typename InputIt>
-constexpr bool parse_exponent(ParserState<InputIt>& state, Buffer& out_buf) {
-  if (!state = state | is_exp_pipe | is_optional_minus | is_optional_plus |
-               is_1_or_more_digits_pipe;
-      state.is_ok()) {
-    return false;
-  }
+constexpr bool parse_exponent(ParserState<InputIt>& state) {
+  state.pipes = 0;
+  state = state | is_exponent_pipe | is_opt_minus_pipe | is_opt_plus_pipe |
+          is_digit_pipe | is_zero_or_more_digits_pipe;
 
-  out_buf.append(is_exp_pipe.buffer());
-  out_buf.append(is_optional_minus.buffer());
-  out_buf.append(is_optional_plus.buffer());
-  out_buf.append(is_1_or_more_digits_pipe.buffer());
-
-  return true;
+  return state.is_ok();
 }
 
 // Numeric values that cannot be represented in the grammar below (such
@@ -88,66 +69,25 @@ constexpr bool parse_exponent(ParserState<InputIt>& state, Buffer& out_buf) {
 // plus          = %x2B                         ; +
 // zero          = %x30                         ; 0
 template <typename InputIt>
-constexpr bool parse_number(ParserState<InputIt>& state, Buffer& out_buf) {
-  EOF_CHECK(state);
+constexpr bool parse_number(ParserState<InputIt>& state) {
+  state = state | is_opt_minus_pipe;
 
-  int sign = 1;
-  u8 b = state.next();
-
-  // Must be minus or digits.
-  if (is_minus(b)) {
-    sign = -1;
-    out_buf.push_back(b);
-  } else if (!is_digit(b)) {
-    return false;
-  }
-
-  state.put(b);
-
-  // Parse `int` part.
-  if (!parse_number(state, out_buf)) {
+  if (!parse_int(state)) {
     return false;
   }
 
   IF_EOF_RETURN(state, true);
 
   // Parse optional frac part.
-  b = state.next();
-  bool has_frac = false;
-
-  if (is_decimal(b)) {
-    state.put(b);
-
-    if (!parse_frac(state, out_buf)) {
-      return false;
-    }
-
-    has_frac = true;
-  }
-
-  // Parse optional exponent.
-  IF_EOF_RETURN(state, true);
-
-  bool has_frac = has_one(first, last, is_decimal_point, ps);
-
-  if (has_frac && !has_one_or_more(first, last, is_digit, ps)) {
+  // Here, pipes > 0 means the state passes through at least 1 pipe.
+  // That is `dot pipe`.
+  if (!parse_frac(state) && state.pipes > 0) {
     return false;
   }
 
-  bool has_exp = has_one(first, last, is_exp, ps);
-  auto is_minus_or_plus = [](VT v) { return is_minus(v) || is_plus(v); };
-
-  if (has_exp && (!has_one(first, last, is_minus_or_plus, ps) ||
-                  !has_one_or_more(first, last, is_digit, ps))) {
+  // Parse optional exponent part.
+  if (!parse_exponent(state) && state.pipes > 0) {
     return false;
-  }
-
-  if (!has_frac) {
-    BigInteger num = strtol(init, (char**)NULL, 10);
-    out = JsonValue{Number(num)};
-  } else {
-    double v = strtod(init, NULL);
-    out = JsonValue{Number(v)};
   }
 
   return true;

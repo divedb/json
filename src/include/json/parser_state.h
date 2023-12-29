@@ -10,19 +10,20 @@
 namespace json {
 
 enum class Status : u8 { kError, kEOF, kOk };
-enum class PipeMode : u8 { kOptional, kFixed, kGreedy };
 
 template <typename InputIt>
 class ParserState {
  public:
   using value_type = typename std::iterator_traits<InputIt>::value_type;
   constexpr static const value_type kSentinel{};
-  constexpr static const int kBufSize = 64;
+  // TODO(gc): do we need to utilize the SSO?
+  constexpr static const int kBufSize = 256;
 
   // Constructor.
   constexpr ParserState(InputIt first, InputIt last,
                         Status status = Status::kOk)
       : line_number(0),
+        pipes(0),
         status(status),
         error_(kSentinel),
         cache_(kSentinel),
@@ -34,6 +35,19 @@ class ParserState {
   constexpr void put(u8 b) {
     assert(cache_ == kSentinel);
     cache_ = b;
+  }
+
+  constexpr u8 back() const {
+    assert(cursor_ != 0);
+
+    return buffer_[cursor_ - 1];
+  }
+
+  constexpr u8 pop_back() {
+    assert(cursor_ != 0);
+    cursor_--;
+
+    return buffer_[cursor_];
   }
 
   constexpr u8 next() {
@@ -57,15 +71,14 @@ class ParserState {
   Buffer buffer() const noexcept { return buffer_.substr(0, cursor_); }
 
   int line_number;
+  int pipes;
   Status status;
   value_type error_;
 
  private:
-  template <typename Predicate>
-  friend class PipeBase;
-
-  template <typename Predicate, PipeMode>
-  friend class Pipe;
+  template <std::size_t N, typename Iterator, typename Predicate>
+  friend inline constexpr ParserState<Iterator> has_fixed(ParserState<Iterator>,
+                                                          Predicate&&);
 
   value_type cache_;
   InputIt first_;
@@ -88,135 +101,101 @@ class ParserState {
     }                             \
   } while (0)
 
-template <typename Predicate>
-class PipeBase {
- public:
-  // Construct a pipe to address `n` elements with the specified predicate `fp`.
-  constexpr explicit PipeBase(Predicate&& fp, int size)
-      : fp_(std::move(fp)), size_(size) {}
-  constexpr explicit PipeBase(const Predicate& fp, int size)
-      : fp_(fp), size_(size) {}
+template <std::size_t N, typename InputIt, typename Predicate>
+inline constexpr ParserState<InputIt> has_fixed(ParserState<InputIt> state,
+                                                Predicate&& p) {
+  CHECK_PARSER_STATE(state);
 
-  template <typename InputIt>
-  constexpr ParserState<InputIt>& apply(ParserState<InputIt>& state) {
-    CHECK_PARSER_STATE(state);
+  std::size_t i;
 
-    for (state.cursor_ = 0; state.has_next() && state.cursor_ < size_;) {
-      u8 b = state.next();
+  for (i = 0; i < N && state.has_next(); ++i) {
+    u8 b = state.next();
 
-      if (!fp_(b)) {
-        state.put(b);
-        state.status = Status::kError;
-        return state;
-      }
-
+    if (!std::forward<Predicate>(p)(b)) {
+      state.put(b);
+      state.status = Status::kError;
+      break;
+    } else {
       state.buffer_[state.cursor_++] = b;
     }
+  }
 
-    if (state.cursor_ < size_) {
-      state.status = Status::kEOF;
+  if (i < N && state.status != Status::kError) {
+    state.status = Status::kEOF;
+  }
+
+  if (state.is_ok()) {
+    state.pipes++;
+  }
+
+  return state;
+}
+
+template <typename InputIt, typename Predicate>
+inline constexpr ParserState<InputIt> has_one(ParserState<InputIt> state,
+                                              Predicate&& p) {
+  return has_fixed<1>(state, std::forward<Predicate>(p));
+}
+
+template <typename InputIt, typename Predicate>
+inline constexpr ParserState<InputIt> has_zero_or_one(
+    ParserState<InputIt> state, Predicate&& p) {
+  state = has_one(state, std::forward<Predicate>(p));
+  state.status = Status::kOk;
+
+  return state;
+}
+
+template <typename InputIt, typename Predicate>
+inline constexpr ParserState<InputIt> has_zero_or_more(
+    ParserState<InputIt> state, Predicate&& p) {
+  while (true) {
+    state = has_one(state, std::forward<Predicate>(p));
+
+    if (!state.is_ok()) {
+      state.status = Status::kOk;
+      break;
     }
-
-    return state;
   }
 
- protected:
-  Predicate fp_;
-  const int size_;
+  return state;
+}
+
+template <typename InputIt, typename Predicate>
+ParserState<InputIt> operator|(ParserState<InputIt> state, Predicate&& pipe) {
+  return std::invoke(std::forward<Predicate>(pipe), state);
+}
+
+template <typename InputIt>
+inline constexpr auto is_digit_pipe =
+    [](ParserState<InputIt> state) { return has_one(state, is_digit); };
+
+template <typename InputIt>
+inline constexpr auto is_zero_or_more_digits_pipe =
+    [](ParserState<InputIt> state) {
+      return has_zero_or_more(state, is_digit);
+    };
+
+template <typename InputIt>
+inline constexpr auto is_dot_pipe =
+    [](ParserState<InputIt> state) { return has_one(state, is_byte<'.'>); };
+
+template <typename InputIt>
+inline constexpr auto is_exponent_pipe =
+    [](ParserState<InputIt> state) { return has_one(state, is_exponent); };
+
+template <typename InputIt>
+inline constexpr auto is_opt_minus_pipe = [](ParserState<InputIt> state) {
+  return has_zero_or_one(state, is_byte<'-'>);
 };
 
-template <typename Predicate, PipeMode = PipeMode::kGreedy>
-class Pipe : public PipeBase<Predicate> {
- public:
-  using Base = PipeBase<Predicate>;
-  using Base::Base;
-
-  template <typename InputIt>
-  constexpr ParserState<InputIt>& operator()(ParserState<InputIt>& state) {
-    state = Base::template apply(state);
-    CHECK_PARSER_STATE(state);
-
-    while (state.has_next()) {
-      u8 b = state.next();
-
-      if (!this->fp_(b)) {
-        state.put(b);
-        state.status = Status::kError;
-        break;
-      }
-
-      state.buffer_[state.cursor_++] = b;
-    }
-
-    return state;
-  }
+template <typename InputIt>
+inline constexpr auto is_opt_plus_pipe = [](ParserState<InputIt> state) {
+  return has_zero_or_one(state, is_byte<'+'>);
 };
 
-template <typename Predicate>
-class Pipe<Predicate, PipeMode::kFixed> : public PipeBase<Predicate> {
- public:
-  using Base = PipeBase<Predicate>;
-  using Base::Base;
-
-  template <typename InputIt>
-  constexpr ParserState<InputIt> operator()(ParserState<InputIt> state) {
-    return Base::template apply(state);
-  }
-};
-
-template <typename Predicate>
-class Pipe<Predicate, PipeMode::kOptional> : public PipeBase<Predicate> {
- public:
-  using Base = PipeBase<Predicate>;
-  using Base::Base;
-
-  template <typename InputIt>
-  constexpr ParserState<InputIt>& operator()(ParserState<InputIt>& state) {
-    CHECK_PARSER_STATE(state);
-
-    if (state.has_next()) {
-      u8 b = state.next();
-
-      if (this->fp_(b)) {
-        state.buffer_[state.cursor_++] = b;
-      } else {
-        state.put(b);
-      }
-    }
-
-    return state;
-  }
-};
-
-template <typename Predicate, typename DP = std::decay_t<Predicate>>
-constexpr auto make_fixed_pipe(Predicate&& p, int n) {
-  return Pipe<DP, PipeMode::kFixed>{std::forward<DP>(p), n};
-}
-
-template <typename Predicate, typename DP = std::decay_t<Predicate>>
-constexpr auto make_greedy_pipe(Predicate&& p, int n) {
-  return Pipe<DP, PipeMode::kGreedy>{std::forward<DP>(p), n};
-}
-
-template <typename Predicate, typename DP = std::decay_t<Predicate>>
-constexpr auto make_optional_pipe(Predicate&& p, int n) {
-  return Pipe<DP, PipeMode::kOptional>{std::forward<DP>(p), n};
-}
-
-template <typename InputIt, typename Predicate, PipeMode mode>
-ParserState<InputIt> operator|(ParserState<InputIt>& state,
-                               Pipe<Predicate, mode>& pipe) {
-  return std::invoke(pipe, state);
-}
-
-template <typename InputIt, typename Predicate, PipeMode mode>
-ParserState<InputIt> operator|(ParserState<InputIt>& state,
-                               Pipe<Predicate, mode>&& pipe) {
-  return std::invoke(std::move(pipe), state);
-}
-
-inline auto is_4_hex_pipe = make_fixed_pipe(is_hex, 4);
-inline auto is_1_or_more_digits_pipe = make_greedy_pipe(is_digit, 1);
-inline auto is_0_or_more_digits_pipe = make_greedy_pipe(is_digit, 0);
+// template <typename InputIt>
+// inline constexpr auto is_4_hex_pipe =
+//     [](ParserState<InputIt> state) { return has_fixed<4>(state, is_hex); };
 
 }  // namespace json

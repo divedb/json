@@ -4,43 +4,68 @@
 
 using namespace json;
 
-TEST(FixedPipe, Ok) {
-  Buffer buf("1234");
-  ParserState state(buf.begin(), buf.end());
+using InputIt = std::string::iterator;
 
-  state = state | is_4_hex_pipe;
+class StringPipe : public ::testing::Test {
+ public:
+  template <typename Source, typename Predicate>
+  void SetUp(Source&& source, Predicate&& predicate) {
+    state_ = new ParserState(begin(std::forward<Source>(source)),
+                             end(std::forward<Source>(source)));
+    *state_ = *state_ | std::forward<Predicate>(predicate);
+  }
 
-  EXPECT_TRUE(state.is_ok());
-  EXPECT_EQ(buf, state.buffer());
+  ~StringPipe() { delete state_; }
+
+ protected:
+  ParserState<InputIt>* state_;
+};
+
+TEST_F(StringPipe, IsDigitOk) {
+  Buffer buf("1");
+  SetUp(buf, is_digit_pipe<InputIt>);
+
+  EXPECT_TRUE(state_->is_ok());
+  EXPECT_FALSE(state_->has_next());
+  EXPECT_EQ(buf, state_->buffer());
 }
 
-TEST(FixedPipe, Eof) {
-  Buffer buf("123");
-  ParserState state(buf.begin(), buf.end());
+TEST_F(StringPipe, IsDigitError) {
+  Buffer buf("x");
+  SetUp(buf, is_digit_pipe<InputIt>);
 
-  state = state | is_4_hex_pipe;
-
-  EXPECT_TRUE(state.status == Status::kEOF);
+  EXPECT_EQ(Status::kError, state_->status);
+  EXPECT_TRUE(state_->has_next());
+  EXPECT_TRUE(state_->buffer().empty());
 }
 
-TEST(FixedPipe, Error) {
-  Buffer buf("123x");
-  ParserState state(buf.begin(), buf.end());
+TEST_F(StringPipe, IsDigitEOF) {
+  Buffer buf("");
+  SetUp(buf, is_digit_pipe<InputIt>);
 
-  state = state | is_4_hex_pipe;
-
-  EXPECT_TRUE(state.status == Status::kError);
-  EXPECT_EQ("123", state.buffer());
+  EXPECT_EQ(Status::kEOF, state_->status);
+  EXPECT_FALSE(state_->has_next());
+  EXPECT_TRUE(state_->buffer().empty());
 }
 
-TEST(GreedyPipe, Ok) {
-  Buffer buf("012012012");
-  ParserState state(buf.begin(), buf.end());
+TEST_F(StringPipe, IsZeroDigitOk) {
+  Buffer buf("");
+  SetUp(buf, is_zero_or_more_digits_pipe<InputIt>);
 
-  state = state | is_1_or_more_digits_pipe;
+  EXPECT_TRUE(state_->is_ok());
+  EXPECT_FALSE(state_->has_next());
+  EXPECT_TRUE(state_->buffer().empty());
+}
 
-  EXPECT_TRUE(state.is_ok());
-  EXPECT_EQ(buf, state.buffer());
+TEST_F(StringPipe, IsMoreDigitOk) {
+  Buffer buf("01234567899876543210x");
+  SetUp(buf, is_zero_or_more_digits_pipe<InputIt>);
+
+  EXPECT_TRUE(state_->is_ok());
+  EXPECT_TRUE(state_->has_next());
+  EXPECT_EQ(Buffer("01234567899876543210"), state_->buffer());
+  EXPECT_EQ('x', state_->next());
+  EXPECT_FALSE(state_->has_next());
 }
 
 int main(int argc, char** argv) {
