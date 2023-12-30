@@ -4,7 +4,7 @@
 #include <climits>
 #include <cstdlib>
 
-#include "json/parser_state.h"
+#include "json/nparser_state.h"
 #include "json/value.h"
 
 namespace json {
@@ -118,9 +118,9 @@ constexpr JsonValue parse_number(ParserState<InputIt>& state) {
     Buffer buf(base, base + state.cursor);
 
     if (has_frac) {
-      if (auto res = std::strtold(buf, nullptr); res != std::HUGE_VALL) {
-        return JsonValue{Number(res)};
-      }
+      auto res = std::strtold(buf, nullptr);
+
+      { return JsonValue{Number(res)}; }
 
       state.error = Error{ErrorType::kHugeVal, buf};
     } else {
