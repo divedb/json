@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <sstream>
+
 #include "json/parser_state.h"
 
 using namespace json;
@@ -107,6 +109,25 @@ TEST(StringPipe, ChainedPipes) {
     EXPECT_EQ(Buffer("123456789"), state.buffer());
     EXPECT_EQ(2, state.succeed_pipes);
   }
+}
+
+TEST(StreamPipe, IsDigit) {
+  using Iter = std::istream_iterator<char>;
+
+  std::istringstream iss("12");
+  Iter first(iss);
+  Iter last;
+
+  ParserState<Iter> state(first, last);
+
+  state | is_digit_pipe;
+
+  EXPECT_TRUE(state.is_ok());
+  EXPECT_TRUE(state.has_next());
+  EXPECT_EQ(Buffer("1"), state.buffer());
+  EXPECT_EQ(1, state.succeed_pipes);
+  EXPECT_EQ('2', state.next());
+  EXPECT_FALSE(state.has_next());
 }
 
 int main(int argc, char** argv) {

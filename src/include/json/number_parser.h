@@ -4,7 +4,7 @@
 #include <climits>
 #include <cstdlib>
 
-#include "json/nparser_state.h"
+#include "json/pipe.h"
 #include "json/value.h"
 
 namespace json {
@@ -16,28 +16,22 @@ template <typename InputIt>
 constexpr bool parse_int(ParserState<InputIt>& state) {
   IF_EOF_RETURN(state, false);
 
-  if (state = state | is_digit_pipe; !state.is_ok()) {
+  if (state | is_digit_pipe; !state.is_ok()) {
     return false;
   }
 
   byte b = state.back();
 
   if (is_zero(b)) {
-    IF_EOF_RETURN(state, true);
+    // 0 can't be followed by other digits.
+    state | is_digit_pipe;
 
-    // Digits can't follow after leading 0.
-    if (state = state | is_digit_pipe; state.is_ok()) {
-      return false;
-    }
-
-    state.put(state.pop_back());
-
-    return true;
+    return !state.is_ok();
   }
 
-  state = state | is_zero_or_more_digits_pipe;
+  state | is_zero_or_more_digits_pipe;
 
-  return true;
+  return state.is_ok();
 }
 
 // frac          = decimal-point 1*DIGIT
