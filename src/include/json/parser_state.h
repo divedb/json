@@ -1,7 +1,15 @@
 #pragma once
 
+#include <cassert>
+#include <memory>
+
 #include "json/error.h"
 #include "json/types.h"
+
+#ifndef NDEBUG
+#include <iomanip>
+#include <iostream>
+#endif
 
 namespace json {
 
@@ -35,6 +43,10 @@ class ParserState {
   constexpr void put(u8 b) {
     assert(cache == kSentinel);
 
+#ifndef NDEBUG
+    std::cout << "put: " << std::hex << b << std::endl;
+#endif
+
     cache = b;
   }
 
@@ -52,14 +64,19 @@ class ParserState {
   }
 
   constexpr u8 next() {
-    if (cache != kSentinel) {
-      auto res = cache;
-      cache = kSentinel;
+    auto b = cache;
 
-      return res;
+    if (cache != kSentinel) {
+      cache = kSentinel;
+    } else {
+      b = *first_++;
     }
 
-    return *first_++;
+#ifndef NDEBUG
+    std::cout << "next: " << std::hex << b << std::endl;
+#endif
+
+    return b;
   }
 
   constexpr bool has_next() const noexcept {
@@ -90,7 +107,7 @@ class ParserState {
   Status status;
   int line_number;
   int succeed_pipes;
-  Error error;
+  std::shared_ptr<Error> error;
 
  private:
   template <typename UnaryPredicate>
@@ -101,5 +118,12 @@ class ParserState {
   InputIt first_;
   InputIt last_;
 };
+
+#define IF_EOF_RETURN(state, expect) \
+  do {                               \
+    if (!state.has_next()) {         \
+      return (expect);               \
+    }                                \
+  } while (0)
 
 }  // namespace json

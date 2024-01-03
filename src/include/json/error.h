@@ -6,18 +6,29 @@
 
 namespace json {
 
-enum class ErrorType : u8 { kDefault, kUnknownByte, kOverflow, kUnderflow };
+enum class ErrorType : u8 {
+  kParseNull,
+  kParseBool,
+  kParseNumber,
+  kParseString,
+  kParseArray,
+  kParseObject
+};
 
 inline std::string error_type_to_string(ErrorType etype) {
   switch (etype) {
-    case ErrorType::kDefault:
-      return "No Error";
-    case ErrorType::kUnknownByte:
-      return "Unknown Byte";
-    case ErrorType::kOverflow:
-      return "Overflow";
-    case ErrorType::kUnderflow:
-      return "Underflow";
+    case ErrorType::kParseNull:
+      return "[Parse NULL]";
+    case ErrorType::kParseBool:
+      return "[Parse BOOL]";
+    case ErrorType::kParseNumber:
+      return "[Parse NUMBER]";
+    case ErrorType::kParseString:
+      return "[Parse STRING]";
+    case ErrorType::kParseArray:
+      return "[Parse ARRAY]";
+    case ErrorType::kParseObject:
+      return "[Parse OBJECT]";
     default:
       return "";
   }
@@ -36,6 +47,11 @@ class Error {
  private:
   ErrorType etype_{};
   std::string emsg_;
+};
+
+class NumberError : public Error {
+ public:
+  NumberError(const std::string& emsg) : Error(ErrorType::kParseNumber, emsg) {}
 };
 
 }  // namespace json

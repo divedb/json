@@ -4,29 +4,38 @@
 #include <climits>
 #include <cstdlib>
 
+#include "json/json_value.h"
 #include "json/pipe.h"
-#include "json/value.h"
+#include "json/util.h"
 
 namespace json {
 
-inline auto is_zero = is_byte<'0'>;
+inline constexpr auto is_zero = is_byte<'0'>;
+inline constexpr auto is_dot_pipe = PipeOne(is_byte<'.'>);
+inline constexpr auto is_opt_minus_pipe = PipeZeroOrOne(is_byte<'-'>);
+inline constexpr auto is_opt_plus_pipe = PipeZeroOrOne(is_byte<'+'>);
+inline constexpr auto is_exponent_pipe = PipeOne(is_exponent);
 
 // int           = zero ｜ ( digit1-9 *DIGIT )
 template <typename InputIt>
 constexpr bool parse_int(ParserState<InputIt>& state) {
-  IF_EOF_RETURN(state, false);
-
   if (state | is_digit_pipe; !state.is_ok()) {
     return false;
   }
 
-  byte b = state.back();
+  u8 b = state.back();
 
   if (is_zero(b)) {
-    // 0 can't be followed by other digits.
-    state | is_digit_pipe;
+    IF_EOF_RETURN(state, true);
 
-    return !state.is_ok();
+    // 0 can't be followed by other digits.
+    if (state | is_non_digit_pipe; state.is_ok()) {
+      state.put(state.pop_back());
+
+      return true;
+    }
+
+    return false;
   }
 
   state | is_zero_or_more_digits_pipe;
@@ -34,11 +43,12 @@ constexpr bool parse_int(ParserState<InputIt>& state) {
   return state.is_ok();
 }
 
+// decimal-point = %x2E                         ; .
 // frac          = decimal-point 1*DIGIT
 template <typename InputIt>
 constexpr bool parse_frac(ParserState<InputIt>& state) {
-  state.pipes = 0;
-  state = state | is_dot_pipe | is_digit_pipe | is_zero_or_more_digits_pipe;
+  state.succeed_pipes = 0;
+  state | is_dot_pipe | is_digit_pipe | is_zero_or_more_digits_pipe;
 
   return state.is_ok();
 }
@@ -47,9 +57,9 @@ constexpr bool parse_frac(ParserState<InputIt>& state) {
 // exp           = e [ minus | plus ] 1*DIGIT   ;
 template <typename InputIt>
 constexpr bool parse_exponent(ParserState<InputIt>& state) {
-  state.pipes = 0;
-  state = state | is_exponent_pipe | is_opt_minus_pipe | is_opt_plus_pipe |
-          is_digit_pipe | is_zero_or_more_digits_pipe;
+  state.succeed_pipes = 0;
+  state | is_exponent_pipe | is_opt_minus_pipe | is_opt_plus_pipe |
+      is_digit_pipe | is_zero_or_more_digits_pipe;
 
   return state.is_ok();
 }
@@ -68,8 +78,8 @@ constexpr bool parse_exponent(ParserState<InputIt>& state) {
 // plus          = %x2B                         ; +
 // zero          = %x30                         ; 0
 template <typename InputIt>
-constexpr bool parse_number(ParserState<InputIt>& state, bool& has_frac) {
-  state = state | is_opt_minus_pipe;
+constexpr bool parse_number_aux(ParserState<InputIt>& state, bool& is_float) {
+  state | is_opt_minus_pipe;
 
   if (!parse_int(state)) {
     return false;
@@ -77,17 +87,26 @@ constexpr bool parse_number(ParserState<InputIt>& state, bool& has_frac) {
 
   IF_EOF_RETURN(state, true);
 
+  bool has_frac = false;
+  bool has_exponent = false;
+
   // Parse optional frac part.
-  // Here, pipes > 0 means the state passes through at least 1 pipe.
+  // Here, succeed_pipes > 0 means the state passes through at least 1 pipe.
   // That is `dot pipe`.
-  if (has_frac = parse_frac(state); !has_frac && state.pipes > 0) {
+  if (has_frac = parse_frac(state); !has_frac && state.succeed_pipes > 0) {
     return false;
   }
 
+  is_float = is_float || has_frac;
+  state.status = Status::kSucceed;
+
   // Parse optional exponent part.
-  if (!parse_exponent(state) && state.pipes > 0) {
+  if (has_exponent = parse_exponent(state);
+      !has_exponent && state.succeed_pipes > 0) {
     return false;
   }
+
+  is_float = is_float || has_exponent;
 
   return true;
 }
@@ -100,33 +119,43 @@ constexpr bool parse_number(ParserState<InputIt>& state, bool& has_frac) {
 // Function discards any whitespace characters (as determined by std::isspace)
 // until first non-whitespace character is found. Then it takes as many
 // characters as possible to form a valid floating-point representation and
-// converts them to a floating-point value. The valid floating-point value can
-// be one of the following:
+// converts them to a floating-point value. The valid floating-point value
+// can be one of the following:
 template <typename InputIt>
-constexpr JsonValue parse_number(ParserState<InputIt>& state) {
-  bool has_frac;
+JsonValue parse_number(ParserState<InputIt>& state) {
+  bool is_float;
+  Buffer buf;
   JsonValue json_value;
 
-  if (parse_number(state, has_frac)) {
-    auto base = state.buf.begin();
-    Buffer buf(base, base + state.cursor);
+  if (parse_number_aux(state, is_float)) {
+    buf = state.buffer();
 
-    if (has_frac) {
-      auto res = std::strtold(buf, nullptr);
+    if (is_float) {
+      auto res = std::strtold(buf.c_str(), nullptr);
 
-      { return JsonValue{Number(res)}; }
-
-      state.error = Error{ErrorType::kHugeVal, buf};
-    } else {
-      auto res = std::strtoll(buf, nullptr);
-
-      if (res == LLONG_MIN) {
-        state.error = Error{ErrorType::kUnderflow, buf};
-      } else if (res == LLONG_MAX) {
-        state.error = Error{ErrorType::kOverflow, buf};
+      if (errno == ERANGE && res == HUGE_VALL) {
+        state.error = std::make_shared<NumberError>(buf + " OVERFLOW!");
       } else {
-        json_value = JsonValue{Number(res)};
+        json_value = Number{res};
       }
+    } else {
+      auto res = std::strtoll(buf.c_str(), nullptr, 10);
+
+      if (res == LLONG_MIN && errno == ERANGE) {
+        state.error = std::make_shared<NumberError>(buf + " UNDERFLOW!");
+      } else if (res == LLONG_MAX && errno == ERANGE) {
+        state.error = std::make_shared<NumberError>(buf + " OVERFLOW!");
+      } else {
+        json_value = Number{res};
+      }
+    }
+  } else {
+    if (state.status == Status::kEOF) {
+      state.error = std::make_shared<NumberError>(buf + " EOF!");
+    } else {
+      Buffer error("Unknown byte ");
+      error.push_back(state.next());
+      state.error = std::make_shared<NumberError>(error);
     }
   }
 

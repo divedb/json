@@ -9,11 +9,13 @@
 
 namespace json {
 
+class JsonValue;
+
 using String = Buffer;
 using BigInteger = long long;
 using LongDouble = long double;
 
-enum JsonType : uint8_t {
+enum class JsonType : u8 {
   kInvalid,
   kString,
   kNumber,
@@ -26,10 +28,18 @@ enum JsonType : uint8_t {
 struct Number {
  public:
   Number() = default;
-  explicit Number(BigInteger value) : is_integer_{true}, value_{value} {}
-  explicit Number(LongDouble value) : is_integer_{false}, value_{value} {}
+  explicit Number(BigInteger value) : value_{value} {}
+  explicit Number(LongDouble value) : value_{value} {}
 
-  bool is_integer() const { return is_integer_; }
+  bool is_integer() const { return value_.index() == 0; }
+
+  constexpr bool operator==(const Number& other) const {
+    return value_ == other.value_;
+  }
+
+  constexpr bool operator!=(const Number& other) const {
+    return !(*this == other);
+  }
 
   template <typename T>
   T get() const {
@@ -37,21 +47,20 @@ struct Number {
       return std::get<BigInteger>(value_);
     }
 
-    if constexpr (std::is_same_v<T, double>) {
+    if constexpr (std::is_same_v<T, LongDouble>) {
       return std::get<LongDouble>(value_);
     }
   }
 
-  friend bool operator==(const Number& lhs, const Number& rhs) {
-    return lhs.is_integer_ == rhs.is_integer_ && lhs.value_ == rhs.value_;
-  }
-
-  friend bool operator!=(const Number& lhs, const Number& rhs) {
-    return !(lhs == rhs);
+  constexpr void print() const {
+    if (value_.index() == 0) {
+      std::cout << get<BigInteger>() << std::endl;
+    } else {
+      std::cout << get<LongDouble>() << std::endl;
+    }
   }
 
  private:
-  bool is_integer_;
   std::variant<BigInteger, LongDouble> value_;
 };
 
@@ -59,7 +68,7 @@ class JsonValue {
  public:
   JsonValue() = default;
 
-  explicit JsonValue(Number num) : type_{kNumber}, value_{num} {}
+  JsonValue(Number num) : type_{JsonType::kNumber}, value_{num} {}
 
   bool is_valid() const { return type_ != JsonType::kInvalid; }
   JsonType type() const { return type_; }
@@ -78,23 +87,24 @@ class JsonValue {
 
   void print() const {
     switch (type_) {
-      case kInvalid:
+      case JsonType::kInvalid:
         std::cout << "invalid\n";
         break;
 
-      case kString:
+      case JsonType::kString:
         std::cout << "string\n";
         break;
 
-      case kNumber:
+      case JsonType::kNumber:
         std::cout << "number\n";
+        std::get<1>(value_).print();
         break;
 
-      case kBool:
+      case JsonType::kBool:
         std::cout << "bool\n";
         break;
 
-      case kNull:
+      case JsonType::kNull:
         std::cout << "null\n";
         break;
 
@@ -102,6 +112,14 @@ class JsonValue {
         std::cout << "default\n";
         break;
     }
+  }
+
+  constexpr bool operator==(const JsonValue& other) const noexcept {
+    return type_ == other.type_ && value_ == other.value_;
+  }
+
+  constexpr bool operator!=(const JsonValue& other) const noexcept {
+    return !(*this == other);
   }
 
  private:

@@ -13,7 +13,7 @@ inline constexpr bool is_hex(int c) {
 }
 
 inline constexpr bool is_digit(int c) { return (c >= '0' && c <= '9'); }
-
+inline constexpr bool is_non_digit(int c) { return !is_digit(c); }
 inline constexpr bool is_exponent(int c) { return c == 'e' || c == 'E'; }
 
 inline constexpr bool is_space(int c) {

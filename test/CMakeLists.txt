@@ -10,4 +10,4 @@ function (add_tests)
 endfunction()
 
 # add_tests(utf_test util_test string_parser_test)
-add_tests(pipe_test)
+add_tests(pipe_test value_test number_parser_test)

@@ -111,7 +111,8 @@ ParserState<InputIt>& operator|(ParserState<InputIt>& state, Pipe&& p) {
   return state.pipe(p);
 }
 
-inline constexpr auto is_digit_pipe = Pipe(1, is_digit);
+inline constexpr auto is_digit_pipe = PipeOne(is_digit);
+inline constexpr auto is_non_digit_pipe = PipeOne(is_non_digit);
 inline constexpr auto is_zero_or_one_digit_pipe = PipeZeroOrOne(is_digit);
 inline constexpr auto is_zero_or_more_digits_pipe = PipeZeroOrMore(is_digit);
 
