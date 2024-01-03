@@ -87,6 +87,7 @@ TEST(NumberParser, ParseNumberAux) {
   }
 }
 
+// TODO(gc): need test underflow and overflow.
 TEST(NumberParser, ParseNumber) {
   std::vector<TestCase> tests{
       {"0", "0", JsonValue{Number(0LL)}},

@@ -4,13 +4,14 @@
 #include <sstream>
 #include <string>
 
+#include "json/pipe.h"
 #include "json/utf.h"
 #include "json/util.h"
 
 namespace json {
 
 // TODO(gc): do we need static storage here?
-inline constexpr auto is_quotation_mark = is_byte<'"'>;
+inline constexpr auto is_quotation_mark_pipe = PipeOne(is_byte<'"'>);
 inline constexpr auto is_escape = is_byte<'\\'>;
 inline constexpr auto is_u = is_byte<'u'>;
 
@@ -50,8 +51,7 @@ inline i32 unicode_to_codepoint(InputIt first, InputIt last) {
 // Then these 4 hex digits are consumed in stream mode, `parse_bmp` function
 // has no chance to get these 4 hex digits back.
 template <typename InputIt>
-inline constexpr void internal_parse_unicode(ParseState<InputIt>& ps,
-                                             Buffer& out_buf) {
+inline constexpr bool parse_unicode(ParseState<InputIt>& state) {
   if (ps = ps | is_4_hex_pipe<InputIt>; !ps.is_ok()) {
     return;
   }
@@ -78,47 +78,10 @@ inline constexpr void internal_parse_unicode(ParseState<InputIt>& ps,
 }
 
 template <typename InputIt>
-inline constexpr void internal_parse_escape(ParseState<InputIt>& ps,
-                                            Buffer& out_buf) {
-  if (!ps.has_next()) {
-    ps.status = Status::kEOF;
-    return;
-  }
+inline constexpr bool parse_escape(ParseState<InputIt>& state) {
+  state | is_escape_pipe;
 
-  u8 b = ps.next();
-
-  switch (b) {
-    case '"':
-      out_buf.push_back('\"');
-      break;
-    case '\\':
-      out_buf.push_back('\\');
-      break;
-    case '/':
-      out_buf.push_back('/');
-      break;
-    case 'b':
-      out_buf.push_back('\b');
-      break;
-    case 'f':
-      out_buf.push_back('\f');
-      break;
-    case 'n':
-      out_buf.push_back('\n');
-      break;
-    case 'r':
-      out_buf.push_back('\r');
-      break;
-    case 't':
-      out_buf.push_back('\t');
-      break;
-    case 'u':
-      internal_parse_unicode(ps, out_buf);
-      break;
-    default:
-      ps.status = Status::kError;
-      break;
-  }
+  return state.is_ok();
 }
 
 // string = quotation-mark *char quotation-mark
@@ -138,13 +101,10 @@ inline constexpr void internal_parse_escape(ParseState<InputIt>& ps,
 // question-mark    = %x22
 // unescaped        s= %x20-21 | %x23-5B | %x5D-10FFFF
 template <typename InputIt>
-inline constexpr bool internal_parse_string(ParseState<InputIt>& ps,
-                                            Buffer& out_buf) {
-  if (ps = has_one(ps, is_quotation_mark); !ps.is_ok()) {
+inline constexpr bool internal_parse_string(ParseState<InputIt>& state) {
+  if (state | is_quotation_mark_pipe; !state.is_ok()) {
     return false;
   }
-
-  out_buf.push_back('"');
 
   while (ps.is_ok() && ps.has_next()) {
     u8 b = ps.next();

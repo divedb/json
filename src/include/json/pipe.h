@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "json/util.h"
 #include "parser_state.h"
 
@@ -94,6 +96,51 @@ class PipeZeroOrMore {
   PipeOne<UnaryPredicate> pipe_one_;
 };
 
+class EscapePipe {
+ public:
+  static constexpr std::optional<u8> escape_char_to_original(u8 escaped_char) {
+    switch (escaped_char) {
+      case '"':
+      case '\\':
+      case '/':
+        return escaped_char;
+      case 'b':
+        return '\b';
+      case 'f':
+        return '\f';
+      case 'n':
+        return '\n';
+      case 'r':
+        return '\r';
+      case 't':
+        return '\t';
+      default:
+        return std::nullopt;
+    }
+  }
+
+  template <typename InputIt>
+  constexpr Status operator()(ParserState<InputIt>& state) const {
+    IF_EOF_RETURN(state, Status::kEOF);
+
+    if (auto b = state.next(); b != '\\') {
+      return Status::kFailure;
+    }
+
+    IF_EOF_RETURN(state, Status::kEOF);
+
+    std::optional<u8> opt;
+
+    if (opt = error_type_to_string(state.next()); !opt.has_value()) {
+      return Status::kFailure;
+    }
+
+    state.buf_[state.cursor_++] = opt.value();
+
+    return Status::kSucceed;
+  }
+};
+
 template <typename Ret, typename... Args>
 Pipe(int, Ret(Args...)) -> Pipe<Ret (*)(Args...)>;
 
@@ -115,5 +162,6 @@ inline constexpr auto is_digit_pipe = PipeOne(is_digit);
 inline constexpr auto is_non_digit_pipe = PipeOne(is_non_digit);
 inline constexpr auto is_zero_or_one_digit_pipe = PipeZeroOrOne(is_digit);
 inline constexpr auto is_zero_or_more_digits_pipe = PipeZeroOrMore(is_digit);
+inline constexpr auto is_escape_pipe = EscapePipe{};
 
 }  // namespace json

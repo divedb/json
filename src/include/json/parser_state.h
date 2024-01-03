@@ -16,6 +16,8 @@ namespace json {
 template <typename UnaryPredicate>
 class Pipe;
 
+class EscapePipe;
+
 enum class Status : u8 { kFailure = 0, kSucceed = 1, kEOF = 2 };
 
 template <typename InputIt>
