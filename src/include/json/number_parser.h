@@ -19,7 +19,7 @@ inline constexpr auto is_exponent_pipe = PipeOne(is_exponent);
 // int           = zero ｜ ( digit1-9 *DIGIT )
 template <typename InputIt>
 constexpr bool parse_int(ParserState<InputIt>& state) {
-  if (state | is_digit_pipe; !state.is_ok()) {
+  if (state | digit_pipe; !state.is_ok()) {
     return false;
   }
 
@@ -29,7 +29,7 @@ constexpr bool parse_int(ParserState<InputIt>& state) {
     IF_EOF_RETURN(state, true);
 
     // 0 can't be followed by other digits.
-    if (state | is_non_digit_pipe; state.is_ok()) {
+    if (state | non_digit_pipe; state.is_ok()) {
       state.put(state.pop_back());
 
       return true;
@@ -38,7 +38,7 @@ constexpr bool parse_int(ParserState<InputIt>& state) {
     return false;
   }
 
-  state | is_zero_or_more_digits_pipe;
+  state | zero_or_more_digits_pipe;
 
   return state.is_ok();
 }
@@ -48,7 +48,7 @@ constexpr bool parse_int(ParserState<InputIt>& state) {
 template <typename InputIt>
 constexpr bool parse_frac(ParserState<InputIt>& state) {
   state.succeed_pipes = 0;
-  state | is_dot_pipe | is_digit_pipe | is_zero_or_more_digits_pipe;
+  state | is_dot_pipe | digit_pipe | zero_or_more_digits_pipe;
 
   return state.is_ok();
 }
@@ -58,8 +58,8 @@ constexpr bool parse_frac(ParserState<InputIt>& state) {
 template <typename InputIt>
 constexpr bool parse_exponent(ParserState<InputIt>& state) {
   state.succeed_pipes = 0;
-  state | is_exponent_pipe | is_opt_minus_pipe | is_opt_plus_pipe |
-      is_digit_pipe | is_zero_or_more_digits_pipe;
+  state | is_exponent_pipe | is_opt_minus_pipe | is_opt_plus_pipe | digit_pipe |
+      zero_or_more_digits_pipe;
 
   return state.is_ok();
 }

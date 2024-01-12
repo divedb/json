@@ -14,9 +14,9 @@
 namespace json {
 
 template <typename UnaryPredicate>
-class Pipe;
+class PipeFixed;
 
-class EscapePipe;
+class PipeEscape;
 
 enum class Status : u8 { kFailure = 0, kSucceed = 1, kEOF = 2 };
 
@@ -96,9 +96,9 @@ class ParserState {
       return *this;
     }
 
-    status = std::forward<UnaryPredicate>(up)(*this);
+    std::forward<UnaryPredicate>(up)(*this);
 
-    if (status == Status::kSucceed) {
+    if (is_ok()) {
       succeed_pipes++;
     }
 
@@ -113,7 +113,9 @@ class ParserState {
 
  private:
   template <typename UnaryPredicate>
-  friend class Pipe;
+  friend class PipeFixed;
+
+  friend class PipeEscape;
 
   int cursor_;
   Buffer buf_;

@@ -69,6 +69,7 @@ class JsonValue {
   JsonValue() = default;
 
   JsonValue(Number num) : type_{JsonType::kNumber}, value_{num} {}
+  JsonValue(const String& str) : type_{JsonType::kString}, value_{str} {}
 
   bool is_valid() const { return type_ != JsonType::kInvalid; }
   JsonType type() const { return type_; }

@@ -16,7 +16,7 @@ using StringIt = std::string::iterator;
   state | pipes;
 
 TEST(StringPipe, IsDigitOk) {
-  AUTO_GEN_MACRO("1", is_digit_pipe)
+  AUTO_GEN_MACRO("1", digit_pipe)
 
   EXPECT_TRUE(state.is_ok());
   EXPECT_FALSE(state.has_next());
@@ -25,7 +25,7 @@ TEST(StringPipe, IsDigitOk) {
 }
 
 TEST(StringPipe, IsDigitError) {
-  AUTO_GEN_MACRO("x", is_digit_pipe)
+  AUTO_GEN_MACRO("x", digit_pipe)
 
   EXPECT_EQ(Status::kFailure, state.status);
   EXPECT_TRUE(state.has_next());
@@ -36,7 +36,7 @@ TEST(StringPipe, IsDigitError) {
 }
 
 TEST(StringPipe, IsDigitEOF) {
-  AUTO_GEN_MACRO("", is_digit_pipe)
+  AUTO_GEN_MACRO("", digit_pipe)
 
   EXPECT_EQ(Status::kEOF, state.status);
   EXPECT_FALSE(state.has_next());
@@ -46,7 +46,7 @@ TEST(StringPipe, IsDigitEOF) {
 
 TEST(StringPipe, IsZeroOrMoreDigits) {
   {
-    AUTO_GEN_MACRO("", is_zero_or_more_digits_pipe)
+    AUTO_GEN_MACRO("", zero_or_more_digits_pipe)
     EXPECT_TRUE(state.is_ok());
     EXPECT_FALSE(state.has_next());
     EXPECT_TRUE(state.buffer().empty());
@@ -54,7 +54,7 @@ TEST(StringPipe, IsZeroOrMoreDigits) {
   }
 
   {
-    AUTO_GEN_MACRO("01234567899876543210x", is_zero_or_more_digits_pipe)
+    AUTO_GEN_MACRO("01234567899876543210x", zero_or_more_digits_pipe)
     EXPECT_TRUE(state.is_ok());
     EXPECT_TRUE(state.has_next());
     EXPECT_EQ(Buffer("01234567899876543210"), state.buffer());
@@ -66,7 +66,7 @@ TEST(StringPipe, IsZeroOrMoreDigits) {
 
 TEST(StringPipe, ChainedPipes) {
   {
-    AUTO_GEN_MACRO("12", is_digit_pipe | is_digit_pipe)
+    AUTO_GEN_MACRO("12", digit_pipe | digit_pipe)
 
     EXPECT_TRUE(state.is_ok());
     EXPECT_FALSE(state.has_next());
@@ -75,7 +75,7 @@ TEST(StringPipe, ChainedPipes) {
   }
 
   {
-    AUTO_GEN_MACRO("1x", is_digit_pipe | is_digit_pipe)
+    AUTO_GEN_MACRO("1x", digit_pipe | digit_pipe)
 
     EXPECT_EQ(Status::kFailure, state.status);
     EXPECT_TRUE(state.has_next());
@@ -84,7 +84,7 @@ TEST(StringPipe, ChainedPipes) {
   }
 
   {
-    AUTO_GEN_MACRO("1", is_digit_pipe | is_digit_pipe)
+    AUTO_GEN_MACRO("1", digit_pipe | digit_pipe)
 
     EXPECT_EQ(Status::kEOF, state.status);
     EXPECT_FALSE(state.has_next());
@@ -93,7 +93,7 @@ TEST(StringPipe, ChainedPipes) {
   }
 
   {
-    AUTO_GEN_MACRO("1", is_digit_pipe | is_zero_or_more_digits_pipe)
+    AUTO_GEN_MACRO("1", digit_pipe | zero_or_more_digits_pipe)
 
     EXPECT_TRUE(state.is_ok());
     EXPECT_FALSE(state.has_next());
@@ -102,7 +102,7 @@ TEST(StringPipe, ChainedPipes) {
   }
 
   {
-    AUTO_GEN_MACRO("123456789", is_digit_pipe | is_zero_or_more_digits_pipe)
+    AUTO_GEN_MACRO("123456789", digit_pipe | zero_or_more_digits_pipe)
 
     EXPECT_TRUE(state.is_ok());
     EXPECT_FALSE(state.has_next());
@@ -120,7 +120,7 @@ TEST(StreamPipe, IsDigit) {
 
   ParserState<Iter> state(first, last);
 
-  state | is_digit_pipe;
+  state | digit_pipe;
 
   EXPECT_TRUE(state.is_ok());
   EXPECT_TRUE(state.has_next());
