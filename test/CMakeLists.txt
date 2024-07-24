@@ -1,13 +1,11 @@
-function (add_one_test target)
-    add_executable(${target} "${target}.cc")
+set(TEST_SOURCES common/memory_context_test.cpp)
+
+foreach (test_source ${TEST_SOURCES})
+    get_filename_component(target ${test_source} NAME_WE)
+    add_executable(${target} ${test_source})
+    target_include_directories(${target} PRIVATE ${GTEST_INCLUDE_DIR})
+    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
     target_link_libraries(${target} PRIVATE ${GTEST_LIBRARIES})
-endfunction()
 
-function (add_tests)
-    foreach(test_name ${ARGN})
-    add_one_test(${test_name})
-    endforeach()
-endfunction()
-
-# add_tests(utf_test util_test string_parser_test)
-add_tests(pipe_test value_test number_parser_test string_parser_test)
+    add_test(NAME ${target} COMMAND ${target})
+endforeach()
