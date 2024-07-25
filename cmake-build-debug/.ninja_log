@@ -1,0 +1,9 @@
+# ninja log v6
+4	1543	1721895928494962696	src/CMakeFiles/json_parser.dir/parser/json_parser.cpp.o	ba6fc4e67e9a69c1
+4	1612	1721895928494647644	_deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o	fa6aa46de074704a
+1546	1616	1721895930037080781	src/libjson_parser.a	8666f369af0f0f4f
+4	1939	1721895928495317788	test/CMakeFiles/json_parser_test.dir/parser/json_parser_test.cpp.o	6beeeb6ffa02fded
+3	4185	1721895928494220749	_deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o	c930a707b148f270
+4186	4272	1721895932677032332	lib/libgtestd.a	51eed37149460812
+4273	4324	1721895932763566719	lib/libgtest_maind.a	e5eb3fcc70a339fe
+4324	4464	1721895932814643052	test/json_parser_test	94a7521244125984

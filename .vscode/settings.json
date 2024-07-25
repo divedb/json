@@ -1,6 +1,6 @@
 {
     "editor.formatOnSave": true,
-    "clang-format.executable": "/usr/local/opt/llvm/bin/clang-format",
+    "clang-format.executable": "/usr/local/bin/clang-format",
     "[cpp]": {
         "editor.defaultFormatter": "xaver.clang-format"
     },
@@ -73,4 +73,6 @@
         "stack": "cpp",
         "unordered_map": "cpp"
     },
+    "C_Cpp.default.cppStandard": "c++20",
+    "clang-format.language.cpp.fallbackStyle": "",
 }

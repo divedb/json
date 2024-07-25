@@ -19,6 +19,13 @@ class MemoryContext {
   static constexpr int kPageSize = 4096;
   static constexpr int kFreeChunks = 10;
 
+  template <typename T, typename... Args>
+  T* create(Args&&... args) {
+    void* ptr = malloc(sizeof(T));
+
+    return new (ptr) T(static_cast<Args&&>(args)...);
+  }
+
   /// @brief Constructs a MemoryContext object.
   MemoryContext() : free_chunks_(kFreeChunks, nullptr) {}
 

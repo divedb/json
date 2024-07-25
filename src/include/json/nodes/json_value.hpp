@@ -18,7 +18,7 @@ enum class JsonType : int { kNull, kBool, kNumber, kString, kArray, kObject };
 
 class JsonValue {
  public:
-  explicit JsonValue(JsonNull v) : storage_{v} {}
+  constexpr explicit JsonValue(JsonNull v) : storage_{v} {}
   explicit JsonValue(bool v) : storage_{v} {}
   explicit JsonValue(JsonNumber v) : storage_{v} {}
   explicit JsonValue(std::string const& v) : storage_{v} {}
@@ -61,6 +61,19 @@ class JsonValue {
     assert(type() == JsonType::kObject);
 
     return std::get<JsonObject*>(storage_);
+  }
+
+  constexpr bool is_object() const { return type() == JsonType::kObject; }
+  constexpr bool is_array() const { return type() == JsonType::kArray; }
+  constexpr bool is_string() const { return type() == JsonType::kString; }
+  constexpr bool is_number() const { return type() == JsonType::kNumber; }
+  constexpr bool is_bool() const { return type() == JsonType::kBool; }
+  constexpr bool is_null() const { return type() == JsonType::kNull; }
+
+  static JsonValue null() {
+    static JsonValue json_value{JsonNull{}};
+
+    return json_value;
   }
 
  private:

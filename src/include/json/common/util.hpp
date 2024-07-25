@@ -45,7 +45,7 @@ namespace json {
 /// @param v The value to compute the next power of 2 for.
 /// @return The smallest power of 2 that is greater than or equal to the input
 ///         value.
-unsigned int next_power_of_2(unsigned int v) {
+constexpr unsigned int next_power_of_2(unsigned int v) {
   v--;
   v |= v >> 1;
   v |= v >> 2;
