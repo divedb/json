@@ -25,33 +25,6 @@ struct Location {
   int source_location{};
 };
 
-
-
-enum class Stage : int {
-  kParseNull,
-  kParseBool,
-  kParseNumber,
-  kParseString,
-  kParseArray,
-  kParseObject
-};
-
-/// @brief kInvalid: invalid number
-enum class ErrorCode : int { kUnknown, kEOF, kInvalid, kUnderflow, kOverflow };
-
-class Error {
- public:
-  Error() = default;
-  Error(Stage stage, ErrorCode ecode) : stage_{stage}, ecode_{ecode} {}
-
-  Stage stage() const { return stage_; }
-  ErrorCode error_code() const { return ecode_; }
-
- private:
-  Stage stage_;
-  ErrorCode ecode_;
-};
-
 class ParserState {
  public:
   constexpr bool is_ok() const { return is_ok_; }

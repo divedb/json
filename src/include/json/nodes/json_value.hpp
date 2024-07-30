@@ -18,12 +18,18 @@ enum class JsonType : int { kNull, kBool, kNumber, kString, kArray, kObject };
 
 class JsonValue {
  public:
+  constexpr JsonValue() : storage_{Dummy{}} {}
   constexpr explicit JsonValue(JsonNull v) : storage_{v} {}
-  explicit JsonValue(bool v) : storage_{v} {}
-  explicit JsonValue(JsonNumber v) : storage_{v} {}
-  explicit JsonValue(std::string const& v) : storage_{v} {}
-  explicit JsonValue(JsonArray* v) : storage_{v} {}
-  explicit JsonValue(JsonObject* v) : storage_{v} {}
+  constexpr explicit JsonValue(bool v) : storage_{v} {}
+
+  template <typename T>
+  requires std::is_integral_v<T> || std::is_floating_point_v<T>
+  constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
+
+  constexpr explicit JsonValue(JsonNumber v) : storage_{v} {}
+  constexpr explicit JsonValue(std::string const& v) : storage_{v} {}
+  constexpr explicit JsonValue(JsonArray* v) : storage_{v} {}
+  constexpr explicit JsonValue(JsonObject* v) : storage_{v} {}
 
   JsonType type() const { return static_cast<JsonType>(storage_.index()); }
 
@@ -76,9 +82,21 @@ class JsonValue {
     return json_value;
   }
 
+  friend constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs) {
+    return lhs.storage_ == rhs.storage_;
+  }
+
+  friend constexpr bool operator!=(JsonValue const& lhs, JsonValue const& rhs) {
+    return !(lhs.storage_ == rhs.storage_);
+  }
+
  private:
+  struct Dummy {
+    constexpr std::strong_ordering operator<=>(Dummy const&) const = default;
+  };
+
   using Storage = std::variant<JsonNull, bool, JsonNumber, std::string,
-                               JsonArray*, JsonObject*>;
+                               JsonArray*, JsonObject*, Dummy>;
   Storage storage_;
 };
 

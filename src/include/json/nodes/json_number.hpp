@@ -3,6 +3,8 @@
 #include <type_traits>
 #include <variant>
 
+#include "json/common/util.hpp"
+
 /// RFC7159
 /// The representation of numbers is similar to that used in most
 /// programming languages. A number is represented in base 10 using
@@ -36,9 +38,14 @@ namespace json {
 
 class JsonNumber {
  public:
+  using Storage = std::variant<int64_t, double>;
+
+  constexpr JsonNumber() = default;
+
   template <typename T>
-    requires std::is_integral_v<T> || std::is_floating_point_v<T>
-  explicit JsonNumber(T v) : storage_{v} {}
+  requires std::is_integral_v<T> || std::is_floating_point_v<T>
+  constexpr explicit JsonNumber(T v) : storage_{v} {}
+  constexpr explicit JsonNumber(Storage storage) : storage_{storage} {}
 
   constexpr bool is_integer() const { return storage_.index() == 0; }
 
@@ -54,6 +61,8 @@ class JsonNumber {
     if constexpr (std::is_floating_point_v<T>) {
       return static_cast<T>(std::get<1>(storage_));
     }
+
+    unreachable();
   }
 
   constexpr void dump(std::ostream& os) const {
@@ -67,7 +76,7 @@ class JsonNumber {
                                    JsonNumber const& rhs);
 
  private:
-  std::variant<int64_t, double> storage_;
+  Storage storage_;
 };
 
 constexpr bool operator==(JsonNumber const& lhs, JsonNumber const& rhs) {

@@ -98,75 +98,7 @@ void Parser::parse_bool(CharStream& stream, ParserState& state,
   state.set_error(ParserState::Error::kParseBool);
 }
 
-/// @brief number        = [ minus ] int [ frac ] [ exp ]
-///        decimal-point = %x2E                                 ;  .
-///        digit1-9      = %x31-39                              ; 1-9
-///        e             = %x65 / %x45                          ; e E
-///        exp           = e [ minus | plus ] 1*DIGIT
-///        frac          = decimal-point 1*DIGIT
-///        int           = zero | ( digit1-9 *DIGIT )
-///        minus         = %x2D                                 ; -
-///        plus          = %x2B                                 ; +
-///        zero          = %x30                                 ; 0
 void Parser::parse_number(CharStream& stream, ParserState& state,
-                          JsonNode*& jnode) {
-  int sign = 1;
-  char ch = stream.peek();
-
-  if (ch == '-') {
-    sign = -1;
-    stream.next_char();
-  }
-
-  CHECK_EOF(stream, state, Stage::kParseNumber);
-
-  Error invalid_number{Stage::kParseNumber, ErrorCode::kInvalid};
-  ch = stream.peek();
-
-  if (!std::isdigit(ch)) {
-    state.set_error(invalid_number);
-
-    return;
-  }
-
-  std::vector<char> buf;
-
-  buf.push_back(ch);
-
-  // Parse int.
-  if (ch == '0') {
-    if (!stream.is_eof() && std::isdigit(stream.peek())) {
-      state.set_error(invalid_number);
-
-      return;
-    }
-  } else {
-    while (!stream.is_eof() && std::isdigit(stream.peek())) {
-      buf.push_back(stream.next_char());
-    }
-  }
-
-  if (!stream.is_eof()) {
-    ch = stream.peek();
-
-    // Parse frac part.
-    if (ch == '.') {
-      int count = 0;
-      buf.push_back(stream.next_char());
-
-      while (!stream.is_eof() && std::isdigit(stream.peek())) {
-        count++;
-        buf.push_back(stream.next_char());
-      }
-
-      // Leading zeros are not allowed.
-      if (count == 0) {
-        state.set_error(invalid_number);
-
-        return;
-      }
-    }
-  }
-}
+                          JsonNode*& jnode) {}
 
 }  // namespace json

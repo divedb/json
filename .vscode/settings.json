@@ -71,7 +71,13 @@
         "queue": "cpp",
         "span": "cpp",
         "stack": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "iomanip": "cpp",
+        "sstream": "cpp",
+        "__node_handle": "cpp",
+        "clocale": "cpp",
+        "cstdarg": "cpp",
+        "complex": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "clang-format.language.cpp.fallbackStyle": "",

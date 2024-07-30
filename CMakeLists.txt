@@ -17,7 +17,7 @@ include(FindGTest)
 include_directories(${GTEST_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
 
-add_subdirectory(src)
+# add_subdirectory(src)
 add_subdirectory(test)
 
 # add_subdirectory(example)

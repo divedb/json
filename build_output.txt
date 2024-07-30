@@ -1,0 +1,4 @@
+[ 25%] Building CXX object test/CMakeFiles/number_converter_test.dir/common/number_converter_test.cpp.o
+make[2]: *** [test/CMakeFiles/number_converter_test.dir/common/number_converter_test.cpp.o] Interrupt: 2
+make[1]: *** [test/CMakeFiles/number_converter_test.dir/all] Interrupt: 2
+make: *** [all] Interrupt: 2

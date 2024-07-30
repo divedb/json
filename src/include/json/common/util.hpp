@@ -1,7 +1,6 @@
 #pragma once
 
-// #include <iomanip>
-// #include <sstream>
+#include <cstring>  // strlen
 
 namespace json {
 
@@ -55,6 +54,26 @@ constexpr unsigned int next_power_of_2(unsigned int v) {
   v++;
 
   return v;
+}
+
+template <typename InputIt>
+constexpr bool is_float(InputIt first, InputIt last) {
+  return std::find_if(first, last, [](char ch) {
+           return ch == '.' || ch == 'e' || ch == 'E';
+         }) != last;
+}
+
+bool is_float(char const* cstr) { return is_float(cstr, cstr + strlen(cstr)); }
+
+[[noreturn]] inline void unreachable() {
+  // Uses compiler specific extensions if possible.
+  // Even if no extension is used, undefined behavior is still raised by
+  // an empty function body and the noreturn attribute.
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+  __assume(false);
+#else  // GCC, Clang
+  __builtin_unreachable();
+#endif
 }
 
 }  // namespace json

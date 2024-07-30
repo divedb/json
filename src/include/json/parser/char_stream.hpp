@@ -1,11 +1,27 @@
 #pragma once
 
-#include <vector>
 #include <unistd.h>
+
+#include <vector>
 
 #include "json/common/error.hpp"
 
 namespace json {
+
+class CharStream;
+
+class CharStreamIterator {
+ public:
+  using value_type = char;
+  using difference_type = std::ptrdiff_t;
+
+  explicit CharStreamIterator(CharStream& stream) : stream_{stream} {}
+
+  value_type operator*();
+
+ private:
+  CharStream& stream_;
+};
 
 class CharStream {
  public:
@@ -149,4 +165,4 @@ class FdCharStream : public CharStream {
   mutable char one_look_ahead_;
 };
 
-}
+}  // namespace json
