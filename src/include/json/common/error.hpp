@@ -6,8 +6,7 @@
 namespace json {
 
 template <typename... Args>
-void __throw__(char const* filename, const size_t lineno,
-  Args&&... args) {
+void __throw__(char const* filename, const size_t lineno, Args&&... args) {
   std::ostringstream oss;
 
   oss << "[" << filename << "@" << lineno << "]: ";

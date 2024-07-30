@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <type_traits>
 #include <variant>
 
@@ -21,19 +22,6 @@
 /// Numeric values that cannot be represented in the grammar below (such
 /// as Infinity and NaN) are not permitted.
 
-/// Grammar
-///
-/// number = [ minus ] int [ frac ] [ exp ]
-/// decimal-point = %x2E       ; .
-/// digit1-9 = %x31-39         ; 1-9
-/// e = %x65 / %x45            ; e E
-/// exp = e [ minus / plus ] 1*DIGIT
-/// frac = decimal-point 1*DIGIT
-/// int = zero / ( digit1-9 *DIGIT )
-/// minus = %x2D               ; -
-/// plus = %x2B                ; +
-/// zero = %x30                ; 0
-
 namespace json {
 
 class JsonNumber {
@@ -43,7 +31,7 @@ class JsonNumber {
   constexpr JsonNumber() = default;
 
   template <typename T>
-  requires std::is_integral_v<T> || std::is_floating_point_v<T>
+    requires std::is_integral_v<T> || std::is_floating_point_v<T>
   constexpr explicit JsonNumber(T v) : storage_{v} {}
   constexpr explicit JsonNumber(Storage storage) : storage_{storage} {}
 
@@ -65,9 +53,11 @@ class JsonNumber {
     unreachable();
   }
 
-  constexpr void dump(std::ostream& os) const {
-    // TODO: fix this.
-    // std::visit([&os](auto&& arg) { os << arg; }, storage_);
+  friend std::ostream& operator<<(std::ostream& os,
+                                  JsonNumber const& json_num) {
+    std::visit([&os](auto&& arg) { os << arg; }, json_num.storage_);
+
+    return os;
   }
 
   friend constexpr bool operator==(JsonNumber const& lhs,

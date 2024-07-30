@@ -59,8 +59,6 @@ class NumberConverter {
  public:
   enum class State : int { kOk, kOverflow, kUnderflow };
 
-  NumberConverter() : state_{State::kOk} {}
-
   /// @brief Converts a string to a floating point or integral value.
   ///
   /// @tparam T The type to convert the string to. Must be a floating point or
@@ -76,27 +74,19 @@ class NumberConverter {
   ///            or HUGE_VALL is returned.
   ///         3. If no conversion can be performed, ​0​ is returned.
   template <typename T>
-  requires std::is_floating_point_v<T> || std::is_integral_v<T> T
-  operator()(char const* str, char** str_end = nullptr, int base = 10) {
+    requires std::is_floating_point_v<T> || std::is_integral_v<T>
+  T operator()(char const* str, char** str_end = nullptr, int base = 10) {
     T res;
 
     if constexpr (std::is_same_v<float, T>) {
       res = strtof(str, str_end);
-    }
-
-    if constexpr (std::is_same_v<double, T>) {
+    } else if constexpr (std::is_same_v<double, T>) {
       res = strtod(str, str_end);
-    }
-
-    if constexpr (std::is_same_v<long double, T>) {
+    } else if constexpr (std::is_same_v<long double, T>) {
       res = strtold(str, str_end);
-    }
-
-    if constexpr (sizeof(T) <= sizeof(long)) {
+    } else if constexpr (sizeof(T) <= sizeof(long)) {
       res = static_cast<T>(strtol(str, str_end, base));
-    }
-
-    if constexpr (sizeof(T) <= sizeof(long long)) {
+    } else if constexpr (sizeof(T) <= sizeof(long long)) {
       res = static_cast<T>(strtoll(str, str_end, base));
     }
 
@@ -121,7 +111,7 @@ class NumberConverter {
   void reset() { state_ = State::kOk; }
 
  private:
-  State state_;
+  State state_{State::kOk};
 };
 
 }  // namespace json

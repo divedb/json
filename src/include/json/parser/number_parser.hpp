@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cerrno>
 #include <cstdlib>  // strtod
-#include <string_view>
 #include <vector>
 
 #include "json/common/constants.hpp"
@@ -15,8 +13,8 @@ namespace json {
 /// int           = zero | ( digit1-9 *DIGIT )
 /// zero          = %x30                                 ; 0
 /// digit1-9      = %x31-39                              ; 1-9
-template <typename InputIter>
-ErrorCode parse_int(InputIter& first, InputIter last, std::vector<char>& buf) {
+template <typename InputIt>
+ErrorCode parse_int(InputIt& first, InputIt last, std::vector<char>& buf) {
   if (first == last) {
     return ErrorCode::kEOF;
   }
@@ -45,8 +43,8 @@ ErrorCode parse_int(InputIter& first, InputIter last, std::vector<char>& buf) {
 
 /// frac          = decimal-point 1*DIGIT
 /// decimal-point = %x2E                                 ;  .
-template <typename InputIter>
-ErrorCode parse_optional_frac(InputIter& first, InputIter last,
+template <typename InputIt>
+ErrorCode parse_optional_frac(InputIt& first, InputIt last,
                               std::vector<char>& buf) {
   if (first != last && *first == kPeriod) {
     buf.push_back(kPeriod);
@@ -70,8 +68,8 @@ ErrorCode parse_optional_frac(InputIter& first, InputIter last,
 /// exp           = e [ minus | plus ] 1*DIGIT
 /// minus         = %x2D                                 ; -
 /// plus          = %x2B                                 ; +
-template <typename InputIter>
-ErrorCode parse_optional_exponent(InputIter& first, InputIter last,
+template <typename InputIt>
+ErrorCode parse_optional_exponent(InputIt& first, InputIt last,
                                   std::vector<char>& buf) {
   if (first != last && (*first == 'e' || *first == 'E')) {
     buf.push_back(*first);
@@ -92,9 +90,9 @@ ErrorCode parse_optional_exponent(InputIter& first, InputIter last,
 
 /// number        = [ minus ] int [ frac ] [ exp ]
 /// minus         = %x2D                                 ; -
-template <typename InputIter>
-InputIter parse_number(InputIter first, InputIter last, JsonValue& json_value,
-                       ErrorCode& err) {
+template <typename InputIt>
+InputIt parse_number(InputIt first, InputIt last, JsonValue& json_value,
+                     ErrorCode& err) {
   if (first == last) {
     err = ErrorCode::kEOF;
 
@@ -122,15 +120,15 @@ InputIter parse_number(InputIter first, InputIter last, JsonValue& json_value,
   }
 
   // Terminate the string.
+  NumberConverter conv;
   buf.push_back(0);
   char const* cstr = buf.data();
-  NumberConverter conv;
 
   if (is_float(cstr)) {
-    double v = conv.operator()<double>(cstr);
+    auto v = conv.operator()<double>(cstr);
     json_value = JsonValue{v};
   } else {
-    int64_t v = conv.operator()<int64_t>(cstr);
+    auto v = conv.operator()<int64_t>(cstr);
     json_value = JsonValue{v};
   }
 

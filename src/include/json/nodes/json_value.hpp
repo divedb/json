@@ -23,10 +23,10 @@ class JsonValue {
   constexpr explicit JsonValue(bool v) : storage_{v} {}
 
   template <typename T>
-  requires std::is_integral_v<T> || std::is_floating_point_v<T>
+    requires std::is_integral_v<T> || std::is_floating_point_v<T>
   constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
 
-  constexpr explicit JsonValue(JsonNumber v) : storage_{v} {}
+  constexpr explicit JsonValue(JsonNumber const& v) : storage_{v} {}
   constexpr explicit JsonValue(std::string const& v) : storage_{v} {}
   constexpr explicit JsonValue(JsonArray* v) : storage_{v} {}
   constexpr explicit JsonValue(JsonObject* v) : storage_{v} {}
@@ -82,6 +82,13 @@ class JsonValue {
     return json_value;
   }
 
+  friend std::ostream& operator<<(std::ostream& os,
+                                  JsonValue const& json_value) {
+    std::visit([&os](auto&& arg) { os << arg; }, json_value.storage_);
+
+    return os;
+  }
+
   friend constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs) {
     return lhs.storage_ == rhs.storage_;
   }
@@ -93,6 +100,10 @@ class JsonValue {
  private:
   struct Dummy {
     constexpr std::strong_ordering operator<=>(Dummy const&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, Dummy const&) {
+      return os << "dummy";
+    }
   };
 
   using Storage = std::variant<JsonNull, bool, JsonNumber, std::string,

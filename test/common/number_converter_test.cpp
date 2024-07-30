@@ -8,6 +8,12 @@
 using namespace json;
 using namespace std;
 
+struct ErrnoTransaction {
+  ~ErrnoTransaction() { errno = old_errno; }
+
+  int old_errno{errno};
+};
+
 template <typename T>
 struct TestCaseBase {
   std::string input;
@@ -17,6 +23,8 @@ struct TestCaseBase {
 
 TEST(NumberConverter, Long) {
   using TestCase = TestCaseBase<long>;
+
+  ErrnoTransaction trans;
 
   vector<TestCase> test_cases{
       {"0", 0, NumberConverter::State::kOk},
@@ -34,6 +42,28 @@ TEST(NumberConverter, Long) {
 
     EXPECT_EQ(ts.output, v);
     EXPECT_EQ(ts.state, conv.state());
+  }
+}
+
+TEST(NumberConverter, Double) {
+  using TestCase = TestCaseBase<double>;
+
+  ErrnoTransaction trans;
+
+  vector<TestCase> test_cases{
+      {"4.2", 4.2, NumberConverter::State::kOk},
+      {"0.0", 0, NumberConverter::State::kOk},
+      {"1e10", 1e10, NumberConverter::State::kOk},
+      {"-1.2e3", -1.2e3, NumberConverter::State::kOk},
+      {"1e1200", HUGE_VALF, NumberConverter::State::kOverflow},
+  };
+
+  for (auto const& ts : test_cases) {
+    NumberConverter conv;
+    auto v = conv.operator()<double>(ts.input.c_str(), nullptr);
+
+    EXPECT_EQ(ts.output, v) << ts.input;
+    EXPECT_EQ(ts.state, conv.state()) << ts.input;
   }
 }
 
