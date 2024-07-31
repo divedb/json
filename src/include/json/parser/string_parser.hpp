@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cassert>
 
+#include "json/common//util.hpp"
 #include "json/common/constants.hpp"
 #include "json/nodes/json_value.hpp"
 #include "json/parser/parse_error.hpp"
+#include "json/unicode/utf8.hpp"
 
 namespace json {
 
@@ -19,19 +21,32 @@ namespace json {
 
 template <typename InputIt>
 ErrorCode parse_unicode(InputIt& first, InputIt last, std::string& buf) {
-  const int digits = 4;
+  const int ndigits = 4;
   auto dist = std::distance(first, last);
 
-  if (dist < digits || std::all_of(first, first + digits, std::isdigit)) {
+  if (dist < ndigits) {
+    return ErrorCode::kEOF;
+  }
+
+  if (std::any_of(first, first + ndigits,
+                  [](char ch) { return !std::isxdigit(ch); })) {
     return ErrorCode::kInvalid;
   }
 
   int codepoint = 0;
-  const int base = 10;
+  const int base = 16;
 
-  for (int i = 0; i < digits; i++, first++) {
-    codepoint = codepoint * base + *first;
+  for (int i = 0; i < ndigits; i++, first++) {
+    codepoint = codepoint * base + hex_char_to_int(*first);
   }
+
+  if (!UTF8::is_valid_rune(codepoint)) {
+    return ErrorCode::kInvalid;
+  }
+
+  char unicode[ndigits];
+  int n = UTF8::encode(std::begin(unicode), codepoint);
+  buf.insert(buf.end(), std::begin(unicode), std::begin(unicode) + n);
 
   return ErrorCode::kOk;
 }
@@ -61,24 +76,26 @@ InputIt parse_string(InputIt first, InputIt last, JsonValue& json_value,
   // be placed within the quotation marks, except for the characters that must
   // be escaped: quotation mark, reverse solidus, and the control characters
   // (U+0000 through U+001F).
-  assert(*first++ == kQuote);
+  char ch = *first++;
+
+  assert(ch == kQuote);
 
   CHECK_EOF(first, last, err);
 
-  char ch{};
   std::string buf;
+  err = ErrorCode::kOk;
 
-  while (first != last) {
-    ch = *first;
+  while (first != last && err == ErrorCode::kOk) {
+    ch = *first++;
 
     if (ch == '\\') {
-      ++first;
       CHECK_EOF(first, last, err);
-      // Check next character.
-      ch = *first;
 
-      if (ch == '"') {
-        buf += '"';
+      // Read next character.
+      ch = *first++;
+
+      if (ch == kQuote) {
+        buf += kQuote;
       } else if (ch == '\\') {
         buf += '\\';
       } else if (ch == '/') {
@@ -94,14 +111,20 @@ InputIt parse_string(InputIt first, InputIt last, JsonValue& json_value,
       } else if (ch == 't') {
         buf += '\t';
       } else if (ch == 'u') {
+        err = parse_unicode(first, last, buf);
       } else {
         err = ErrorCode::kInvalid;
-
-        return first;
       }
+    } else if (ch == kQuote) {
+      json_value = JsonValue{buf};
+
+      return first;
     } else {
+      buf.push_back(ch);
     }
   }
+
+  CHECK_EOF(first, last, err);
 
   return first;
 }

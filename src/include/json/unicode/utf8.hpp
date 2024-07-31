@@ -67,6 +67,23 @@ class UTF8 {
 
     return 4;
   }
+
+  /// @brief Check whether rune can be legally encoded as UTF-8. Code points
+  ///        that are out of range or a surrogate half are illegal.
+  ///
+  /// @param rune The Unicode code point.
+  /// @return True if the rune can be legally encoded as UTF-8 otherwise false.
+  static bool is_valid_rune(int32_t rune) {
+    if (rune >= 0 && rune < kSurrogateMin) {
+      return true;
+    }
+
+    if (rune > kSurrogateMax && rune <= kMaxRune) {
+      return true;
+    }
+
+    return false;
+  }
 };
 
 }  // namespace json

@@ -1,9 +1,13 @@
 set(TEST_SOURCES
     common/number_converter_test.cpp
+    common/utf8_test.cpp
+
     # common/memory_context_test.cpp
     nodes/json_value_test.cpp
+
     # parser/json_parser_test.cpp
     parser/number_parser_test.cpp
+    parser/string_parser_test.cpp
 )
 
 foreach(test_source ${TEST_SOURCES})

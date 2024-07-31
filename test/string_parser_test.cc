@@ -11,34 +11,6 @@ using namespace json;
 
 using InputIt = typename std::string::const_iterator;
 
-struct StringTest {
-  std::string input;
-  Buffer expect_buf;
-  JsonValue json_value;
-  Status expect_status{Status::kSucceed};
-};
-
-static void parse_string_test(const std::vector<StringTest>& tests) {
-  for (auto&& test : tests) {
-    auto& input = test.input;
-    std::string suffix = ":[" + input + "]";
-    ParserState<InputIt> state(input.begin(), input.end());
-    JsonValue json_value = parse_string(state);
-
-    EXPECT_EQ(test.expect_status, state.status) << suffix;
-    EXPECT_EQ(test.expect_buf, state.buffer()) << suffix;
-
-    if (state.is_ok()) {
-      EXPECT_TRUE(test.json_value == json_value) << suffix;
-    }
-  }
-}
-
-TEST(StringParser, Succeed) {
-  std::vector<StringTest> tests = {{"\"\"", "\"\"", JsonValue("\"\"")}};
-  parse_string_test(tests);
-}
-
 // TEST(StringParser, ParseAscii) {
 //   std::vector<StringTest> tests = {
 //       {"\"\"", "\"\""},           {"\"a\"", "\"a\""},
