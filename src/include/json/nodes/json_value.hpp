@@ -51,19 +51,37 @@ class JsonValue {
     return std::get<bool>(storage_);
   }
 
-  JsonNumber as_number() const {
+  JsonNumber& as_number() {
     assert(type() == JsonType::kNumber);
 
     return std::get<JsonNumber>(storage_);
   }
 
-  std::string as_string() const {
+  JsonNumber const& as_number() const {
+    assert(type() == JsonType::kNumber);
+
+    return std::get<JsonNumber>(storage_);
+  }
+
+  std::string& as_string() {
     assert(type() == JsonType::kString);
 
     return std::get<std::string>(storage_);
   }
 
-  JsonArray* as_array() const {
+  std::string const& as_string() const {
+    assert(type() == JsonType::kString);
+
+    return std::get<std::string>(storage_);
+  }
+
+  JsonArray*& as_array() {
+    assert(type() == JsonType::kArray);
+
+    return std::get<JsonArray*>(storage_);
+  }
+
+  JsonArray const* as_array() const {
     assert(type() == JsonType::kArray);
 
     return std::get<JsonArray*>(storage_);

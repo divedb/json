@@ -2,8 +2,12 @@
 
 #include <type_traits>
 
-#include "json/nodes/json_value.hpp"
+#include "json/common//number_converter.hpp"
+#include "json/common/constants.hpp"
+#include "json/nodes/json_array.hpp"
+#include "json/nodes/json_object.hpp"
 #include "json/parser/parser_common.hpp"
+#include "json/unicode/utf8.hpp"
 
 namespace json {
 
@@ -53,6 +57,50 @@ class JsonParser {
 
  private:
   template <typename InputIt>
+  ErrorCode parse_null(InputIt& first, InputIt last, JsonValue& json_value) {
+    auto dist = std::distance(first, last);
+    auto size = strlen(kNullValue);
+
+    if (dist < size) {
+      return ErrorCode::kEOF;
+    }
+
+    if (!std::equal(kNullValue, kNullValue + size, first)) {
+      return ErrorCode::kInvalid;
+    }
+
+    json_value = JsonValue::null();
+
+    return ErrorCode::kOk;
+  }
+
+  template <typename InputIt>
+  ErrorCode parse_bool(InputIt& first, InputIt last, JsonValue& json_value) {
+    char ch = *first++;
+    char const* expect = kFalseValue;
+    bool is_true = ch == 't';
+
+    if (is_true) {
+      expect = kTrueValue;
+    }
+
+    auto dist = std::distance(first, last);
+    auto size = strlen(expect);
+
+    if (dist < size) {
+      return ErrorCode::kEOF;
+    }
+
+    if (!std::equal(expect, expect + size, first)) {
+      return ErrorCode::kInvalid;
+    }
+
+    json_value.as_bool() = is_true;
+
+    return ErrorCode::kOk;
+  }
+
+  template <typename InputIt>
   ErrorCode parse_unicode(InputIt& first, InputIt last, std::string& buf) {
     const int ndigits = 4;
     auto dist = std::distance(first, last);
@@ -101,10 +149,7 @@ class JsonParser {
   /// question-mark    = %x22
   /// unescaped        = %x20-21 | %x23-5B | %x5D-10FFFF
   template <typename InputIt>
-  InputIt parse_string(InputIt first, InputIt last, JsonValue& json_value,
-                       ErrorCode& err) {
-    // TODO(gc): needs EOF check?
-
+  ErrorCode parse_string(InputIt& first, InputIt last, JsonValue& json_value) {
     // A string begins and ends with quotation marks. All Unicode characters may
     // be placed within the quotation marks, except for the characters that must
     // be escaped: quotation mark, reverse solidus, and the control characters
@@ -113,16 +158,15 @@ class JsonParser {
 
     assert(ch == kQuote);
 
-    CHECK_EOF(first, last, err);
+    CHECK_EOF(first, last);
 
     std::string buf;
-    err = ErrorCode::kOk;
 
-    while (first != last && err == ErrorCode::kOk) {
+    while (first != last) {
       ch = *first++;
 
       if (ch == '\\') {
-        CHECK_EOF(first, last, err);
+        CHECK_EOF(first, last);
 
         // Read next character.
         ch = *first++;
@@ -144,32 +188,31 @@ class JsonParser {
         } else if (ch == 't') {
           buf += '\t';
         } else if (ch == 'u') {
-          err = parse_unicode(first, last, buf);
+          if (ErrorCode err = parse_unicode(first, last, buf);
+              err != ErrorCode::kOk) {
+            return err;
+          }
         } else {
-          err = ErrorCode::kInvalid;
+          return ErrorCode::kInvalid;
         }
       } else if (ch == kQuote) {
-        json_value = JsonValue{buf};
+        json_value.as_string() = std::move(buf);
 
-        return first;
+        return ErrorCode::kOk;
       } else {
         buf.push_back(ch);
       }
     }
 
-    CHECK_EOF(first, last, err);
-
-    return first;
+    return ErrorCode::kEOF;
   }
 
   /// int           = zero | ( digit1-9 *DIGIT )
   /// zero          = %x30                                 ; 0
   /// digit1-9      = %x31-39                              ; 1-9
   template <typename InputIt>
-  ErrorCode parse_int(InputIt& first, InputIt last, std::vector<char>& buf) {
-    if (first == last) {
-      return ErrorCode::kEOF;
-    }
+  ErrorCode parse_int(InputIt& first, InputIt last, std::string& buf) {
+    CHECK_EOF(first, last);
 
     char ch = *first++;
 
@@ -197,7 +240,7 @@ class JsonParser {
   /// decimal-point = %x2E                                 ;  .
   template <typename InputIt>
   ErrorCode parse_optional_frac(InputIt& first, InputIt last,
-                                std::vector<char>& buf) {
+                                std::string& buf) {
     if (first != last && *first == kPeriod) {
       buf.push_back(kPeriod);
       auto ofirst = ++first;
@@ -222,7 +265,7 @@ class JsonParser {
   /// plus          = %x2B                                 ; +
   template <typename InputIt>
   ErrorCode parse_optional_exponent(InputIt& first, InputIt last,
-                                    std::vector<char>& buf) {
+                                    std::string& buf) {
     if (first != last && (*first == 'e' || *first == 'E')) {
       buf.push_back(*first);
       auto ofirst = ++first;
@@ -243,117 +286,143 @@ class JsonParser {
   /// number        = [ minus ] int [ frac ] [ exp ]
   /// minus         = %x2D                                 ; -
   template <typename InputIt>
-  InputIt parse_number(InputIt first, InputIt last, JsonValue& json_value,
-                       ErrorCode& err) {
-    if (first == last) {
-      err = ErrorCode::kEOF;
-
-      return first;
-    }
-
+  ErrorCode parse_number(InputIt& first, InputIt last, JsonValue& json_value) {
     char ch = *first;
-    std::vector<char> buf;
+    std::string buf;
 
     if (ch == '-') {
       ++first;
       buf.push_back(ch);
     }
 
-    if (err = parse_int(first, last, buf); err != ErrorCode::kOk) {
-      return first;
+    if (ErrorCode err = parse_int(first, last, buf); err != ErrorCode::kOk) {
+      return err;
     }
 
-    if (err = parse_optional_frac(first, last, buf); err != ErrorCode::kOk) {
-      return first;
-    }
-
-    if (err = parse_optional_exponent(first, last, buf);
+    if (ErrorCode err = parse_optional_frac(first, last, buf);
         err != ErrorCode::kOk) {
-      return first;
+      return err;
+    }
+
+    if (ErrorCode err = parse_optional_exponent(first, last, buf);
+        err != ErrorCode::kOk) {
+      return err;
     }
 
     // Terminate the string.
     NumberConverter conv;
-    buf.push_back(0);
-    char const* cstr = buf.data();
+    char const* cstr = buf.c_str();
 
     if (is_float(cstr)) {
       auto v = conv.operator()<double>(cstr);
-      json_value = JsonValue{v};
+      json_value.as_number().as_double() = v;
     } else {
       auto v = conv.operator()<int64_t>(cstr);
-      json_value = JsonValue{v};
+      json_value.as_number().as_int64() = v;
     }
 
     if (conv.is_overflow()) {
-      err = ErrorCode::kOverflow;
+      return ErrorCode::kOverflow;
     }
 
     if (conv.is_underflow()) {
-      err = ErrorCode::kUnderflow;
+      return ErrorCode::kUnderflow;
+    }
+
+    return ErrorCode::kOk;
+  }
+
+  /// An array structure is represented as square brackets surrounding zero or
+  /// more values (or elements). Elements are separated by commas.
+  /// array = begin-array [ value *( value-separator value ) ] end-array
+  /// There is no requirement that the values in an array be of the same type.
+  template <typename InputIt>
+  ErrorCode parse_array(InputIt& first, InputIt last, JsonValue& json_value) {
+    char ch = *first++;
+
+    assert(ch == kOpenBracket);
+
+    CHECK_EOF(first, last);
+
+    ch = *first++;
+
+    if (ch == kCloseBracket) {
+      return ErrorCode::kOk;
+    } else {
+      while (first != last) {
+        JsonValue element;
+        ErrorCode err = parse_common(first, last, element);
+
+        if (err != ErrorCode::kOk) {
+          return err;
+        }
+
+        json_value.as_array()->append(element);
+        first = skip_space(first, last);
+        CHECK_EOF(first, last);
+        ch = *first++;
+
+        if (ch == kCloseBracket) {
+          return ErrorCode::kOk;
+        }
+
+        if (ch != kListSeparator) {
+          return ErrorCode::kInvalid;
+        }
+
+        first = skip_space(first, last);
+      }
+
+      return ErrorCode::kEOF;
+    }
+  }
+
+  template <typename InputIt>
+  ErrorCode parse_object(InputIt& first, InputIt last, JsonValue& json_value) {
+    char ch = *first++;
+
+    assert(ch == kOpenBrace);
+
+    JsonValue key;
+    ErrorCode err = parse_string(first, last, key);
+  }
+
+  template <typename InputIt>
+  ErrorCode parse_common(InputIt& first, InputIt last, JsonValue& json_value) {
+    CHECK_EOF(first, last);
+
+    char ch = *first;
+
+    if (ch == 'n') {
+      return parse_null(first, last, json_value);
+    } else if (ch == 't' || ch == 'f') {
+      return parse_bool(first, last, json_value);
+    } else if (std::isdigit(ch) || ch == '-') {
+      return parse_number(first, last, json_value);
+    } else if (ch == kQuote) {
+      return parse_string(first, last, json_value);
+    } else if (ch == kOpenBracket) {
+      // TODO(gc): how to avoid memory leak?
+      void* ptr = alloc_.malloc(sizeof(JsonArray));
+      json_value.as_array() = new (ptr) JsonArray();
+
+      return parse_array(first, last, json_value);
+    } else if (ch == kOpenBrace) {
+      void* ptr = alloc_.malloc(sizeof(JsonObject));
+      json_value.as_object() = new (ptr) JsonObject();
+
+      return parse_object(first, last, json_value);
+    }
+
+    return ErrorCode::kInvalid;
+  }
+
+  template <typename InputIt>
+  InputIt skip_space(InputIt first, InputIt last) {
+    while (first != last && std::isspace(*first++)) {
     }
 
     return first;
-  }
-
-  template <typename InputIt>
-  ErrorCode parse_null(InputIt& first, InputIt last, JsonValue& json_value) {
-    auto dist = std::distance(first, last);
-    auto size = strlen(kNullValue);
-
-    if (dist < size) {
-      return ErrorCode::kEOF;
-    }
-
-    if (!std::equal(kNullValue, kNullValue + size, first)) {
-      return ErrorCode::kInvalid;
-    }
-
-    json_value = JsonValue::null();
-
-    return ErrorCode::kOk;
-  }
-
-  template <typename InputIt>
-  ErrorCode parse_bool(InputIt& first, InputIt last, JsonValue& json_value) {
-    char ch = *first++;
-    char const* expect = kFalseValue;
-    bool is_true = ch == 't';
-
-    if (is_true) {
-      expect = kTrueValue;
-    }
-
-    auto dist = std::distance(first, last);
-    auto size = strlen(expect);
-
-    if (dist < size) {
-      return ErrorCode::kEOF;
-    }
-
-    if (!std::equal(expect, expect + size, first)) {
-      return ErrorCode::kInvalid;
-    }
-
-    json_value.as_bool() = is_true;
-
-    return ErrorCode::kOk;
-  }
-
-  template <typename InputIt>
-  InputIt parse_common(InputIt& first, InputIt last, JsonValue& json_value,
-                       ErrorCode& err) {
-    CHECK_EOF(first, last, err);
-
-    char ch = *first++;
-
-    if (ch == kQuote) {
-      return parse_string(first, last, json_value, err);
-    } else if (std::isdigit(ch) || ch == '-') {
-      return parse_number(first, last, json_value, err);
-    } else if (ch == kOpenBracket) {
-      return parse_array(first, last, json_value, err, alloc);
-    }
   }
 
   Allocator alloc_;

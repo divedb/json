@@ -1,18 +1,12 @@
 #pragma once
 
-#include "json/common/constants.hpp"
-#include "json/parser/array_parser.hpp"
-#include "json/parser/number_parser.hpp"
-#include "json/parser/string_parser.hpp"
-
 namespace json {
 
-#define CHECK_EOF(first, last, err) \
-  do {                              \
-    if (first == last) {            \
-      err = ErrorCode::kEOF;        \
-      return first;                 \
-    }                               \
+#define CHECK_EOF(first, last) \
+  do {                         \
+    if (first == last) {       \
+      return ErrorCode::kEOF;  \
+    }                          \
   } while (0)
 
 enum class Stage : int {

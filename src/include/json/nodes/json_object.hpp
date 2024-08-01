@@ -3,7 +3,7 @@
 #include <map>
 #include <string_view>
 
-#include "json/error.hpp"
+#include "json/common/error.hpp"
 #include "json/nodes/json_value.hpp"
 
 namespace json {
@@ -28,6 +28,10 @@ class JsonObject {
     }
 
     return iter->second;
+  }
+
+  void append(std::string const& key, JsonValue const& json_value) {
+    storage_[key] = json_value;
   }
 
  private:

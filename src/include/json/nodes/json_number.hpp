@@ -37,21 +37,10 @@ class JsonNumber {
 
   constexpr bool is_integer() const { return storage_.index() == 0; }
 
-  template <typename T>
-  T get() const {
-    static_assert(std::is_floating_point_v<T> || std::is_integral_v<T>,
-                  "Unsupported type");
-
-    if constexpr (std::is_integral_v<T>) {
-      return static_cast<T>(std::get<0>(storage_));
-    }
-
-    if constexpr (std::is_floating_point_v<T>) {
-      return static_cast<T>(std::get<1>(storage_));
-    }
-
-    unreachable();
-  }
+  int64_t& as_int64() { return std::get<int64_t>(storage_); }
+  int64_t const& as_int64() const { return std::get<int64_t>(storage_); }
+  double& as_double() { return std::get<double>(storage_); }
+  double const& as_double() const { return std::get<double>(storage_); }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   JsonNumber const& json_num) {
