@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "json/nodes/json_value.h"
+#include "json/nodes/json_value.hpp"
 
 namespace json {
 
@@ -22,6 +22,8 @@ class JsonArray {
 
     return storage_[index];
   }
+
+  void append(JsonValue const& json_value) { storage_.push_back(json_value); }
 
  private:
   std::vector<JsonValue> storage_;

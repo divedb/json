@@ -39,7 +39,13 @@ class JsonValue {
     return std::get<JsonNull>(storage_);
   }
 
-  bool as_bool() const {
+  bool& as_bool() {
+    assert(type() == JsonType::kBool);
+
+    return std::get<bool>(storage_);
+  }
+
+  bool const& as_bool() const {
     assert(type() == JsonType::kBool);
 
     return std::get<bool>(storage_);
