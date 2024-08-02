@@ -23,13 +23,41 @@ class JsonValue {
   constexpr explicit JsonValue(bool v) : storage_{v} {}
 
   template <typename T>
-    requires std::is_integral_v<T> || std::is_floating_point_v<T>
+    requires std::is_integral_v<T>
+  constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
+
+  template <typename T>
+    requires std::is_floating_point_v<T>
   constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
 
   constexpr explicit JsonValue(JsonNumber const& v) : storage_{v} {}
   constexpr explicit JsonValue(std::string const& v) : storage_{v} {}
   constexpr explicit JsonValue(JsonArray* v) : storage_{v} {}
   constexpr explicit JsonValue(JsonObject* v) : storage_{v} {}
+
+  JsonValue& operator=(JsonNull v) {
+    storage_ = v;
+
+    return *this;
+  }
+
+  JsonValue& operator=(bool v) {
+    storage_ = v;
+
+    return *this;
+  }
+
+  JsonValue& operator=(int v) {
+    storage_ = JsonNumber{v};
+
+    return *this;
+  }
+
+  JsonValue& operator=(double v) {
+    storage_ = JsonNumber{v};
+
+    return *this;
+  }
 
   JsonType type() const { return static_cast<JsonType>(storage_.index()); }
 
@@ -87,10 +115,45 @@ class JsonValue {
     return std::get<JsonArray*>(storage_);
   }
 
-  JsonObject* as_object() const {
+  JsonObject*& as_object() {
     assert(type() == JsonType::kObject);
 
     return std::get<JsonObject*>(storage_);
+  }
+
+  JsonObject const* as_object() const {
+    assert(type() == JsonType::kObject);
+
+    return std::get<JsonObject*>(storage_);
+  }
+
+  template <typename T>
+  static JsonValue get_default() {
+    if constexpr (std::is_same_v<T, JsonNull>) {
+      return null();
+    }
+
+    if constexpr (std::is_same_v<T, bool>) {
+      return JsonValue{true};
+    }
+
+    if constexpr (std::is_same_v<T, JsonNumber>) {
+      return JsonValue{0};
+    }
+
+    if constexpr (std::is_same_v<T, std::string>) {
+      return JsonValue{std::string()};
+    }
+
+    if constexpr (std::is_same_v<T, JsonArray>) {
+      return JsonValue{static_cast<JsonArray*>(nullptr)};
+    }
+
+    if constexpr (std::is_same_v<T, JsonObject>) {
+      return JsonValue{static_cast<JsonObject*>(nullptr)};
+    }
+
+    unreachable();
   }
 
   constexpr bool is_object() const { return type() == JsonType::kObject; }

@@ -1,10 +1,11 @@
-#include "json/parser/number_parser.hpp"
-
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string_view>
 #include <vector>
+
+#include "json/common/alloc.hpp"
+#include "json/parser/json_parser.hpp"
 
 using namespace json;
 using namespace std;
@@ -28,16 +29,14 @@ TEST(JsonParser, ParseNumber) {
       {"1e1200", JsonValue{HUGE_VALF}, ErrorCode::kOverflow},
   };
 
+  MallocAllocator alloc;
+
   for (auto& ts : test_cases) {
-    ErrorCode err;
-    JsonValue json_value;
+    auto [json_value, err] =
+        JsonParser::parse(ts.input.begin(), ts.input.end(), alloc);
 
-    parse_number(ts.input.begin(), ts.input.end(), json_value, err);
-
-    cout << json_value << endl;
-
-    EXPECT_EQ(ts.err, err);
-    EXPECT_EQ(ts.json_value, json_value);
+    EXPECT_EQ(ts.err, err) << ts.input;
+    EXPECT_EQ(ts.json_value, json_value) << ts.input;
   }
 }
 

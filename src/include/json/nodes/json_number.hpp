@@ -31,16 +31,32 @@ class JsonNumber {
   constexpr JsonNumber() = default;
 
   template <typename T>
-    requires std::is_integral_v<T> || std::is_floating_point_v<T>
-  constexpr explicit JsonNumber(T v) : storage_{v} {}
-  constexpr explicit JsonNumber(Storage storage) : storage_{storage} {}
+    requires std::is_integral_v<T>
+  constexpr explicit JsonNumber(T v) : storage_{static_cast<int64_t>(v)} {}
+
+  template <typename T>
+    requires std::is_floating_point_v<T>
+  constexpr explicit JsonNumber(T v) : storage_{static_cast<double>(v)} {}
+
+  constexpr explicit JsonNumber(Storage const& storage) : storage_{storage} {}
 
   constexpr bool is_integer() const { return storage_.index() == 0; }
 
-  int64_t& as_int64() { return std::get<int64_t>(storage_); }
-  int64_t const& as_int64() const { return std::get<int64_t>(storage_); }
-  double& as_double() { return std::get<double>(storage_); }
-  double const& as_double() const { return std::get<double>(storage_); }
+  template <typename T>
+    requires std::is_integral_v<T>
+  JsonNumber& operator=(T v) {
+    storage_ = static_cast<int64_t>(v);
+
+    return *this;
+  }
+
+  template <typename T>
+    requires std::is_floating_point_v<T>
+  JsonNumber& operator=(T v) {
+    storage_ = static_cast<double>(v);
+
+    return *this;
+  }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   JsonNumber const& json_num) {

@@ -1,8 +1,9 @@
-#include "json/parser/string_parser.hpp"
-
 #include <gtest/gtest.h>
 
 #include <vector>
+
+#include "json/common/alloc.hpp"
+#include "json/parser/json_parser.hpp"
 
 using namespace json;
 using namespace std;
@@ -14,10 +15,11 @@ struct TestCase {
 };
 
 static void internal_test(vector<TestCase> const& test_cases) {
+  MallocAllocator alloc;
+
   for (auto& ts : test_cases) {
-    JsonValue json_value;
-    ErrorCode err;
-    parse_string(ts.input.begin(), ts.input.end(), json_value, err);
+    auto [json_value, err] =
+        JsonParser::parse(ts.input.begin(), ts.input.end(), alloc);
 
     EXPECT_EQ(ts.err, err) << ts.input;
 
@@ -27,20 +29,20 @@ static void internal_test(vector<TestCase> const& test_cases) {
   }
 }
 
-// TEST(StringParser, Basic) {
-//   vector<TestCase> test_cases{
-//       {"\"\"", ""},           {"\"a\"", "a"},
-//       {"\"aaa\"", "aaa"},     {"\"1a2n\"", "1a2n"},
-//       {"\"AAAA\"", "AAAA"},   {"\"1A2b3C4d\"", "1A2b3C4d"},
-//       {"\"44444\"", "44444"}, {"\"0\"", "0"},
-//       {"\"ÿ\"", "ÿ"},         {R"("\n")", "\n"},
-//       {R"("\r")", "\r"},      {R"("\f")", "\f"},
-//       {R"("\t")", "\t"},      {R"("\b")", "\b"},
-//       {R"("\\")", "\\"},      {R"("\"\"")", "\"\""},
-//   };
+TEST(StringParser, Basic) {
+  vector<TestCase> test_cases{
+      {"\"\"", ""},           {"\"a\"", "a"},
+      {"\"aaa\"", "aaa"},     {"\"1a2n\"", "1a2n"},
+      {"\"AAAA\"", "AAAA"},   {"\"1A2b3C4d\"", "1A2b3C4d"},
+      {"\"44444\"", "44444"}, {"\"0\"", "0"},
+      {"\"ÿ\"", "ÿ"},         {R"("\n")", "\n"},
+      {R"("\r")", "\r"},      {R"("\f")", "\f"},
+      {R"("\t")", "\t"},      {R"("\b")", "\b"},
+      {R"("\\")", "\\"},      {R"("\"\"")", "\"\""},
+  };
 
-//   internal_test(test_cases);
-// }
+  internal_test(test_cases);
+}
 
 // TODO(gc): support surrogate pair.
 TEST(StringParser, Unicode) {
