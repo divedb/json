@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <variant>
 
+#include "json/nodes/json_array.hpp"
 #include "json/nodes/json_null.hpp"
 #include "json/nodes/json_number.hpp"
 
@@ -127,6 +128,20 @@ class JsonValue {
     return std::get<JsonObject*>(storage_);
   }
 
+  static JsonValue null() {
+    static JsonValue json_value{JsonNull{}};
+
+    return json_value;
+  }
+
+  template <typename Allocator>
+  static JsonValue make_empty_array(Allocator& alloc) {
+    void* ptr = alloc.malloc(sizeof(JsonArray));
+    auto array = new (ptr) JsonArray();
+
+    return JsonValue{array};
+  }
+
   template <typename T>
   static JsonValue get_default() {
     if constexpr (std::is_same_v<T, JsonNull>) {
@@ -163,12 +178,6 @@ class JsonValue {
   constexpr bool is_bool() const { return type() == JsonType::kBool; }
   constexpr bool is_null() const { return type() == JsonType::kNull; }
 
-  static JsonValue null() {
-    static JsonValue json_value{JsonNull{}};
-
-    return json_value;
-  }
-
   friend std::ostream& operator<<(std::ostream& os,
                                   JsonValue const& json_value) {
     std::visit([&os](auto&& arg) { os << arg; }, json_value.storage_);
@@ -177,6 +186,33 @@ class JsonValue {
   }
 
   friend constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs) {
+    auto type1 = lhs.type();
+    auto type2 = rhs.type();
+
+    if (type1 != type2) {
+      return false;
+    }
+
+    if (type1 == JsonType::kNull) {
+      return true;
+    }
+
+    if (type1 == JsonType::kBool) {
+      return lhs.as_bool() == rhs.as_bool();
+    }
+
+    if (type1 == JsonType::kNumber) {
+      return lhs.as_number() == rhs.as_number();
+    }
+
+    if (type1 == JsonType::kString) {
+      return lhs.as_string() == rhs.as_string();
+    }
+
+    if (type1 == JsonType::kArray) {
+      return *(lhs.as_array()) == *(rhs.as_array());
+    }
+
     return lhs.storage_ == rhs.storage_;
   }
 

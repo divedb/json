@@ -2,10 +2,12 @@
 
 #include <gtest/gtest.h>
 
+#include "json/common/alloc.hpp"
+
 using namespace std;
 using namespace json;
 
-TEST(JsonValue, Comparison) {
+TEST(JsonValue, Number) {
   JsonValue v1{1};
   JsonValue v2{4.2};
   JsonValue v3{4.2};
@@ -19,6 +21,27 @@ TEST(JsonValue, Comparison) {
 
   EXPECT_FALSE(v4 == v5);
   EXPECT_EQ(v5, v6);
+}
+
+TEST(JsonValue, Array) {
+  MallocAllocator alloc;
+
+  // Create an empry array.
+  auto v1 = JsonValue::make_empty_array(alloc);
+  auto v2 = JsonValue::make_empty_array(alloc);
+  auto v3 = JsonValue::make_empty_array(alloc);
+
+  for (int i = 0; i < 10; i++) {
+    v1.as_array()->append(JsonValue{i});
+    v2.as_array()->append(JsonValue{i});
+
+    if (i % 2 == 0) {
+      v3.as_array()->append(JsonValue{i});
+    }
+  }
+
+  EXPECT_EQ(v1, v2);
+  EXPECT_NE(v2, v3);
 }
 
 int main(int argc, char** argv) {
