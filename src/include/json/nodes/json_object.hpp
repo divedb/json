@@ -10,7 +10,9 @@ namespace json {
 
 class JsonObject {
  public:
-  using value_type = std::pair<const std::string, JsonValue>;
+  using key_type = std::string;
+  using mapped_type = JsonValue;
+  using value_type = std::pair<const key_type, mapped_type>;
 
   JsonObject() = default;
   explicit JsonObject(std::initializer_list<value_type> values)
@@ -35,7 +37,7 @@ class JsonObject {
   }
 
  private:
-  std::map<std::string, JsonValue> storage_;
+  std::map<key_type, mapped_type> storage_;
 };
 
 }  // namespace json

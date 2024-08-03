@@ -12,7 +12,6 @@
 
 namespace json {
 
-class JsonArray;
 class JsonObject;
 
 enum class JsonType : int { kNull, kBool, kNumber, kString, kArray, kObject };
@@ -24,11 +23,7 @@ class JsonValue {
   constexpr explicit JsonValue(bool v) : storage_{v} {}
 
   template <typename T>
-    requires std::is_integral_v<T>
-  constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
-
-  template <typename T>
-    requires std::is_floating_point_v<T>
+    requires std::is_integral_v<T> || std::is_floating_point_v<T>
   constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
 
   constexpr explicit JsonValue(JsonNumber const& v) : storage_{v} {}
@@ -128,51 +123,6 @@ class JsonValue {
     assert(type() == JsonType::kObject);
 
     return std::get<JsonObject*>(storage_);
-  }
-
-  static JsonValue null() {
-    static JsonValue json_value{JsonNull{}};
-
-    return json_value;
-  }
-
-  template <typename Allocator, typename... JsonValues>
-  static JsonValue create_array(Allocator& alloc, JsonValues&&... json_values) {
-    void* ptr = alloc.malloc(sizeof(JsonArray));
-    auto array = new (ptr) JsonArray();
-
-    (array->append(JsonValue{json_values}), ...);
-
-    return JsonValue{array};
-  }
-
-  template <typename T>
-  static JsonValue get_default() {
-    if constexpr (std::is_same_v<T, JsonNull>) {
-      return null();
-    }
-
-    if constexpr (std::is_same_v<T, bool>) {
-      return JsonValue{true};
-    }
-
-    if constexpr (std::is_same_v<T, JsonNumber>) {
-      return JsonValue{0};
-    }
-
-    if constexpr (std::is_same_v<T, std::string>) {
-      return JsonValue{std::string()};
-    }
-
-    if constexpr (std::is_same_v<T, JsonArray>) {
-      return JsonValue{static_cast<JsonArray*>(nullptr)};
-    }
-
-    if constexpr (std::is_same_v<T, JsonObject>) {
-      return JsonValue{static_cast<JsonObject*>(nullptr)};
-    }
-
-    unreachable();
   }
 
   constexpr bool is_object() const { return type() == JsonType::kObject; }

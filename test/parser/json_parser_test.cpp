@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "json/common/alloc.hpp"
+#include "json/nodes/json_value_factory.hpp"
 
 using namespace json;
 using namespace std;
@@ -105,13 +106,14 @@ TEST(ArrayParser, Basic) {
   MallocAllocator alloc;
 
   vector<TestCase> test_cases{
-      {R"([])", JsonValue::create_array(alloc)},
-      {R"([1, 2, 3])", JsonValue::create_array(alloc, 1, 2, 3)},
-      {R"([ 1  ,   2    ,   3    ])", JsonValue::create_array(alloc, 1, 2, 3)},
+      {R"([])", JsonValueFactory::create_array(alloc)},
+      {R"([1, 2, 3])", JsonValueFactory::create_array(alloc, 1, 2, 3)},
+      {R"([ 1  ,   2    ,   3    ])",
+       JsonValueFactory::create_array(alloc, 1, 2, 3)},
       {R"([ "1"  ,   "2"    ,   "3"    ])",
-       JsonValue::create_array(alloc, "1", "2", "3")},
+       JsonValueFactory::create_array(alloc, "1", "2", "3")},
       {R"([ "1"  ,   2    ,   "3"    ])",
-       JsonValue::create_array(alloc, "1", 2, "3")},
+       JsonValueFactory::create_array(alloc, "1", 2, "3")},
   };
 
   internal_test(test_cases);
@@ -121,15 +123,19 @@ TEST(ArrayParser, SubArray) {
   MallocAllocator alloc;
 
   vector<TestCase> test_cases{
-      {"[[]]", JsonValue::create_array(alloc, JsonValue::create_array(alloc))},
-      {"[[1]]",
-       JsonValue::create_array(alloc, JsonValue::create_array(alloc, 1))},
+      {"[[]]", JsonValueFactory::create_array(
+                   alloc, JsonValueFactory::create_array(alloc))},
+      {"[[1]]", JsonValueFactory::create_array(
+                    alloc, JsonValueFactory::create_array(alloc, 1))},
       {"[[1], 2, [3, 4, 5]]",
-       JsonValue::create_array(alloc, JsonValue::create_array(alloc, 1), 2,
-                               JsonValue::create_array(alloc, 3, 4, 5))}};
+       JsonValueFactory::create_array(
+           alloc, JsonValueFactory::create_array(alloc, 1), 2,
+           JsonValueFactory::create_array(alloc, 3, 4, 5))}};
 
   internal_test(test_cases);
 }
+
+TEST(ObjectParser, Basic) {}
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

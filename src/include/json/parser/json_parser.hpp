@@ -4,8 +4,7 @@
 
 #include "json/common/constants.hpp"
 #include "json/common/number_converter.hpp"
-#include "json/nodes/json_array.hpp"
-#include "json/nodes/json_object.hpp"
+#include "json/nodes/json_value_factory.hpp"
 #include "json/parser/parser_common.hpp"
 #include "json/unicode/utf8.hpp"
 
@@ -53,7 +52,7 @@ class JsonParser {
       return ErrorCode::kInvalid;
     }
 
-    json_value = JsonValue::null();
+    json_value = JsonValueFactory::create_null();
 
     return ErrorCode::kOk;
   }
@@ -447,30 +446,27 @@ class JsonParser {
     char ch = *first;
 
     if (ch == 'n') {
-      json_value = JsonValue::get_default<JsonNull>();
+      json_value = JsonValueFactory::create_null();
 
       return parse_null(first, last, json_value);
     } else if (ch == 't' || ch == 'f') {
-      json_value = JsonValue::get_default<bool>();
+      json_value = JsonValueFactory::create_default_bool();
 
       return parse_bool(first, last, json_value);
     } else if (std::isdigit(ch) || ch == '-') {
-      json_value = JsonValue::get_default<JsonNumber>();
+      json_value = JsonValueFactory::create_default_number();
 
       return parse_number(first, last, json_value);
     } else if (ch == kQuote) {
-      json_value = JsonValue::get_default<std::string>();
+      json_value = JsonValueFactory::create_default_string();
 
       return parse_string(first, last, json_value);
     } else if (ch == kOpenBracket) {
-      json_value = JsonValue::create_array(alloc);
+      json_value = JsonValueFactory::create_default_array(alloc);
 
       return parse_array(first, last, alloc, json_value);
     } else if (ch == kOpenBrace) {
-      json_value = JsonValue::get_default<JsonObject>();
-
-      void* ptr = alloc.malloc(sizeof(JsonObject));
-      json_value.as_object() = new (ptr) JsonObject();
+      json_value = JsonValueFactory::create_default_object(alloc);
 
       return parse_object(first, last, alloc, json_value);
     }
