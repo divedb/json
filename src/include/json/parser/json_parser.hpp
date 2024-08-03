@@ -11,12 +11,28 @@
 
 namespace json {
 
+class ErrnoRAII {
+ public:
+  ErrnoRAII() : errno_(errno) {}
+  ErrnoRAII(ErrnoRAII const&) = delete;
+  ErrnoRAII(ErrnoRAII&&) noexcept = delete;
+  ErrnoRAII& operator=(ErrnoRAII const&) = delete;
+  ErrnoRAII& operator=(ErrnoRAII&&) = delete;
+
+  ~ErrnoRAII() { errno = errno_; }
+
+ private:
+  int errno_;
+};
+
 class JsonParser {
  public:
   template <typename InputIt, typename Allocator>
   static std::pair<JsonValue, ErrorCode> parse(InputIt first, InputIt last,
                                                Allocator& alloc) {
+    ErrnoRAII errno_raii;
     JsonValue json_value;
+
     ErrorCode err = parse_common(first, last, alloc, json_value);
 
     return std::make_pair(json_value, err);
@@ -447,9 +463,7 @@ class JsonParser {
 
       return parse_string(first, last, json_value);
     } else if (ch == kOpenBracket) {
-      json_value = JsonValue::get_default<JsonArray>();
-      void* ptr = alloc.malloc(sizeof(JsonArray));
-      json_value.as_array() = new (ptr) JsonArray();
+      json_value = JsonValue::create_array(alloc);
 
       return parse_array(first, last, alloc, json_value);
     } else if (ch == kOpenBrace) {
@@ -467,7 +481,7 @@ class JsonParser {
   template <typename InputIt>
   static InputIt skip_space(InputIt first, InputIt last) {
     return std::find_if_not(first, last,
-                            [](char ch) { return std::isdigit(ch); });
+                            [](char ch) { return std::isspace(ch); });
   }
 };
 

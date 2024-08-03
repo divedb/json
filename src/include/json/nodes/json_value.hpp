@@ -33,6 +33,8 @@ class JsonValue {
 
   constexpr explicit JsonValue(JsonNumber const& v) : storage_{v} {}
   constexpr explicit JsonValue(std::string const& v) : storage_{v} {}
+  explicit JsonValue(char const* v) : storage_{std::string(v)} {}
+  explicit JsonValue(std::string_view v) : storage_{std::string(v)} {}
   constexpr explicit JsonValue(JsonArray* v) : storage_{v} {}
   constexpr explicit JsonValue(JsonObject* v) : storage_{v} {}
 
@@ -134,10 +136,12 @@ class JsonValue {
     return json_value;
   }
 
-  template <typename Allocator>
-  static JsonValue make_empty_array(Allocator& alloc) {
+  template <typename Allocator, typename... JsonValues>
+  static JsonValue create_array(Allocator& alloc, JsonValues&&... json_values) {
     void* ptr = alloc.malloc(sizeof(JsonArray));
     auto array = new (ptr) JsonArray();
+
+    (array->append(JsonValue{json_values}), ...);
 
     return JsonValue{array};
   }
