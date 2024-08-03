@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "json/common/alloc.hpp"
+#include "json/nodes/json_value_factory.hpp"
 
 using namespace std;
 using namespace json;
@@ -27,9 +28,9 @@ TEST(JsonValue, Array) {
   MallocAllocator alloc;
 
   // Create an empry array.
-  auto v1 = JsonValue::create_array(alloc);
-  auto v2 = JsonValue::create_array(alloc);
-  auto v3 = JsonValue::create_array(alloc);
+  auto v1 = JsonValueFactory::create_default_array(alloc);
+  auto v2 = JsonValueFactory::create_default_array(alloc);
+  auto v3 = JsonValueFactory::create_default_array(alloc);
 
   for (int i = 0; i < 10; i++) {
     v1.as_array()->append(JsonValue{i});

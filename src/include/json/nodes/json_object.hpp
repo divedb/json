@@ -36,6 +36,11 @@ class JsonObject {
     storage_[key] = json_value;
   }
 
+  friend constexpr bool operator==(JsonObject const& lhs,
+                                   JsonObject const& rhs) {
+    return lhs.storage_ == rhs.storage_;
+  }
+
  private:
   std::map<key_type, mapped_type> storage_;
 };

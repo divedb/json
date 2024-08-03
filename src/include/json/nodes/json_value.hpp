@@ -139,40 +139,8 @@ class JsonValue {
     return os;
   }
 
-  friend constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs) {
-    auto type1 = lhs.type();
-    auto type2 = rhs.type();
-
-    if (type1 != type2) {
-      return false;
-    }
-
-    if (type1 == JsonType::kNull) {
-      return true;
-    }
-
-    if (type1 == JsonType::kBool) {
-      return lhs.as_bool() == rhs.as_bool();
-    }
-
-    if (type1 == JsonType::kNumber) {
-      return lhs.as_number() == rhs.as_number();
-    }
-
-    if (type1 == JsonType::kString) {
-      return lhs.as_string() == rhs.as_string();
-    }
-
-    if (type1 == JsonType::kArray) {
-      return *(lhs.as_array()) == *(rhs.as_array());
-    }
-
-    return lhs.storage_ == rhs.storage_;
-  }
-
-  friend constexpr bool operator!=(JsonValue const& lhs, JsonValue const& rhs) {
-    return !(lhs.storage_ == rhs.storage_);
-  }
+  friend constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs);
+  friend constexpr bool operator!=(JsonValue const& lhs, JsonValue const& rhs);
 
  private:
   struct Dummy {

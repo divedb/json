@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include "json/common/alloc.hpp"
-#include "json/nodes/json_value_factory.hpp"
 
 using namespace json;
 using namespace std;
@@ -135,7 +134,17 @@ TEST(ArrayParser, SubArray) {
   internal_test(test_cases);
 }
 
-TEST(ObjectParser, Basic) {}
+TEST(ObjectParser, Basic) {
+  MallocAllocator alloc;
+
+  vector<TestCase> test_cases{
+      {R"({"name": "jack", "age": 18})",
+       JsonValueFactory::create_object(alloc, {"name", "age"},
+                                       {JsonValue{"jack"}, JsonValue{18}})},
+  };
+
+  internal_test(test_cases);
+}
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

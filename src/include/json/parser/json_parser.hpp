@@ -10,6 +10,44 @@
 
 namespace json {
 
+constexpr bool operator==(JsonValue const& lhs, JsonValue const& rhs) {
+  auto type1 = lhs.type();
+  auto type2 = rhs.type();
+
+  // Must have same type.
+  if (type1 != type2) {
+    return false;
+  }
+
+  if (type1 == JsonType::kNull) {
+    return true;
+  }
+
+  if (type1 == JsonType::kBool) {
+    return lhs.as_bool() == rhs.as_bool();
+  }
+
+  if (type1 == JsonType::kNumber) {
+    return lhs.as_number() == rhs.as_number();
+  }
+
+  if (type1 == JsonType::kString) {
+    return lhs.as_string() == rhs.as_string();
+  }
+
+  if (type1 == JsonType::kArray) {
+    return *(lhs.as_array()) == *(rhs.as_array());
+  }
+
+  assert(type1 == JsonType::kObject);
+
+  return *(lhs.as_object()) == *(rhs.as_object());
+}
+
+constexpr bool operator!=(JsonValue const& lhs, JsonValue const& rhs) {
+  return !(lhs.storage_ == rhs.storage_);
+}
+
 class ErrnoRAII {
  public:
   ErrnoRAII() : errno_(errno) {}
@@ -146,7 +184,7 @@ class JsonParser {
 
     CHECK_EOF(first, last);
 
-    std::string buf;
+    std::string& buf = json_value.as_string();
 
     while (first != last) {
       ch = *first++;
@@ -182,8 +220,6 @@ class JsonParser {
           return ErrorCode::kInvalid;
         }
       } else if (ch == kQuote) {
-        json_value.as_string() = std::move(buf);
-
         return ErrorCode::kOk;
       } else {
         buf.push_back(ch);
@@ -393,7 +429,7 @@ class JsonParser {
       }
 
       while (first != last) {
-        JsonValue key;
+        JsonValue key = JsonValueFactory::create_default_string();
         ErrorCode err = parse_string(first, last, key);
 
         if (err != ErrorCode::kOk) {
