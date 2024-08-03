@@ -141,6 +141,16 @@ TEST(ObjectParser, Basic) {
       {R"({"name": "jack", "age": 18})",
        JsonValueFactory::create_object(alloc, {"name", "age"},
                                        {JsonValue{"jack"}, JsonValue{18}})},
+      {R"({"name"  :   "jack"    ,   "age" : 18, "hobbies": ["swimming", "running"], "salary": 12500, "is_male": true, "child": {"age": 6}})",
+       JsonValueFactory::create_object(
+           alloc, {"name", "age", "hobbies", "salary", "is_male", "child"},
+           {JsonValueFactory::create_string("jack"),
+            JsonValueFactory::create_number(18),
+            JsonValueFactory::create_array(alloc, "swimming", "running"),
+            JsonValueFactory::create_number(12500),
+            JsonValueFactory::create_bool(true),
+            JsonValueFactory::create_object(
+                alloc, {"age"}, {JsonValueFactory::create_number(6)})})},
   };
 
   internal_test(test_cases);

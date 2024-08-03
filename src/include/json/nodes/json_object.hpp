@@ -41,6 +41,11 @@ class JsonObject {
     return lhs.storage_ == rhs.storage_;
   }
 
+  friend constexpr bool operator!=(JsonObject const& lhs,
+                                   JsonObject const& rhs) {
+    return !(lhs == rhs);
+  }
+
  private:
   std::map<key_type, mapped_type> storage_;
 };

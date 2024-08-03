@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include "json/common/constants.hpp"
+#include "json/common/log.hpp"
 #include "json/common/number_converter.hpp"
 #include "json/nodes/json_value_factory.hpp"
 #include "json/parser/parser_common.hpp"
@@ -87,6 +88,8 @@ class JsonParser {
     }
 
     if (!std::equal(kNullValue, kNullValue + size, first)) {
+      LOG(std::cerr, "Expect `null`");
+
       return ErrorCode::kInvalid;
     }
 
@@ -114,6 +117,8 @@ class JsonParser {
     }
 
     if (!std::equal(expect, expect + size, first)) {
+      LOG(std::cerr, "Expect `bool`");
+
       return ErrorCode::kInvalid;
     }
 
@@ -134,6 +139,8 @@ class JsonParser {
 
     if (std::any_of(first, first + ndigits,
                     [](char ch) { return !std::isxdigit(ch); })) {
+      LOG(std::cerr, "Expect a digit:");
+
       return ErrorCode::kInvalid;
     }
 
@@ -145,6 +152,8 @@ class JsonParser {
     }
 
     if (!UTF8::is_valid_rune(codepoint)) {
+      LOG(std::cerr, "Invalid codepoint: ", codepoint);
+
       return ErrorCode::kInvalid;
     }
 
@@ -217,6 +226,8 @@ class JsonParser {
             return err;
           }
         } else {
+          LOG(std::cerr, "Invalid escape character: ", ch);
+
           return ErrorCode::kInvalid;
         }
       } else if (ch == kQuote) {
@@ -239,6 +250,8 @@ class JsonParser {
     char ch = *first++;
 
     if (!std::isdigit(ch)) {
+      LOG(std::cerr, "Expect a digit: ", ch);
+
       return ErrorCode::kInvalid;
     }
 
@@ -247,6 +260,8 @@ class JsonParser {
     if (ch == '0') {
       // Leading zeros are not allowed.
       if (first != last && std::isdigit(*first)) {
+        LOG(std::cerr, "Leading zeros can't be followed with digits.");
+
         return ErrorCode::kInvalid;
       }
     } else {
@@ -273,6 +288,8 @@ class JsonParser {
 
       // At least 1 digit is followed.
       if (ofirst == first) {
+        LOG(std::cerr, "At least 1 digit is followed.");
+
         return ErrorCode::kInvalid;
       }
     }
@@ -298,6 +315,8 @@ class JsonParser {
 
       // At least 1 digit is followed.
       if (ofirst == first) {
+        LOG(std::cerr, "At least 1 digit is followed.");
+
         return ErrorCode::kInvalid;
       }
     }
@@ -397,6 +416,8 @@ class JsonParser {
         }
 
         if (ch != kListSeparator) {
+          LOG(std::cerr, "Expect `,`");
+
           return ErrorCode::kInvalid;
         }
 
@@ -425,6 +446,8 @@ class JsonParser {
       return ErrorCode::kOk;
     } else {
       if (ch != kQuote) {
+        LOG(std::cerr, "Expect `\"`.");
+
         return ErrorCode::kInvalid;
       }
 
@@ -441,6 +464,8 @@ class JsonParser {
         ch = *first++;
 
         if (ch != kKeyValueSeparator) {
+          LOG(std::cerr, "Expect `:`.");
+
           return ErrorCode::kInvalid;
         }
 
@@ -464,6 +489,8 @@ class JsonParser {
         }
 
         if (ch != kListSeparator) {
+          LOG(std::cerr, "Expect `,`.");
+
           return ErrorCode::kInvalid;
         }
 
@@ -506,6 +533,8 @@ class JsonParser {
 
       return parse_object(first, last, alloc, json_value);
     }
+
+    LOG(std::cerr, "Unknown character: ", ch);
 
     return ErrorCode::kInvalid;
   }
