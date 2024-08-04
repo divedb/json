@@ -78,53 +78,52 @@ class JsonParser {
 
  private:
   template <typename InputIt>
-  static ErrorCode parse_null(InputIt& first, InputIt last,
-                              JsonValue& json_value) {
-    auto dist = std::distance(first, last);
-    auto size = strlen(kNullValue);
+  static ErrorCode expect_token(InputIt& first, InputIt last,
+                                char const* token) {
+    while (*token && first != last) {
+      if (*first != *token) {
+        return ErrorCode::kInvalid;
+      }
 
-    if (dist < size) {
-      return ErrorCode::kEOF;
+      first++;
+      token++;
     }
 
-    if (!std::equal(kNullValue, kNullValue + size, first)) {
-      LOG(std::cerr, "Expect `null`");
-
-      return ErrorCode::kInvalid;
-    }
-
-    json_value = JsonValueFactory::create_null();
+    CHECK_EOF(first, last);
 
     return ErrorCode::kOk;
   }
 
   template <typename InputIt>
+  static ErrorCode parse_null(InputIt& first, InputIt last,
+                              JsonValue& json_value) {
+    ErrorCode err = expect_token(first, last, kNullValue);
+
+    if (err == ErrorCode::kOk) {
+      json_value = JsonValueFactory::create_null();
+    }
+
+    return err;
+  }
+
+  template <typename InputIt>
   static ErrorCode parse_bool(InputIt& first, InputIt last,
                               JsonValue& json_value) {
-    char ch = *first++;
-    char const* expect = kFalseValue;
+    ErrorCode err;
+    char ch = *first;
     bool is_true = ch == 't';
 
     if (is_true) {
-      expect = kTrueValue;
+      err = expect_token(first, last, kTrueValue);
+    } else {
+      err = expect_token(first, last, kFalseValue);
     }
 
-    auto dist = std::distance(first, last);
-    auto size = strlen(expect);
-
-    if (dist < size) {
-      return ErrorCode::kEOF;
+    if (err == ErrorCode::kOk) {
+      json_value.as_bool() = is_true;
     }
 
-    if (!std::equal(expect, expect + size, first)) {
-      LOG(std::cerr, "Expect `bool`");
-
-      return ErrorCode::kInvalid;
-    }
-
-    json_value.as_bool() = is_true;
-
-    return ErrorCode::kOk;
+    return err;
   }
 
   template <typename InputIt>
