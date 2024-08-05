@@ -6,12 +6,12 @@
 #include <type_traits>
 #include <variant>
 
-#include "json/nodes/json_array.hpp"
 #include "json/nodes/json_null.hpp"
 #include "json/nodes/json_number.hpp"
 
 namespace json {
 
+class JsonArray;
 class JsonObject;
 
 enum class JsonType : int { kNull, kBool, kNumber, kString, kArray, kObject };
@@ -23,7 +23,7 @@ class JsonValue {
   constexpr explicit JsonValue(bool v) : storage_{v} {}
 
   template <typename T>
-    requires std::is_integral_v<T> || std::is_floating_point_v<T>
+  requires std::is_integral_v<T> || std::is_floating_point_v<T>
   constexpr explicit JsonValue(T v) : storage_{JsonNumber{v}} {}
 
   constexpr explicit JsonValue(JsonNumber const& v) : storage_{v} {}
