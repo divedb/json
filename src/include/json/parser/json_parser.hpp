@@ -5,7 +5,7 @@
 #include "json/common/constants.hpp"
 #include "json/common/log.hpp"
 #include "json/common/number_converter.hpp"
-#include "json/nodes/json_value_factory.hpp"
+#include "json/node/json_value_factory.hpp"
 #include "json/parser/parser_common.hpp"
 #include "json/unicode/utf8.hpp"
 
@@ -150,14 +150,14 @@ class JsonParser {
       codepoint = codepoint * base + hex_char_to_int(*first);
     }
 
-    if (!UTF8::is_valid_rune(codepoint)) {
+    if (!unicode::is_valid_unicode(codepoint)) {
       LOG(std::cerr, "Invalid codepoint: ", codepoint);
 
       return ErrorCode::kInvalid;
     }
 
     char unicode[ndigits];
-    int n = UTF8::encode(std::begin(unicode), codepoint);
+    int n = unicode::UTF8::encode(std::begin(unicode), codepoint);
     buf.insert(buf.end(), std::begin(unicode), std::begin(unicode) + n);
 
     return ErrorCode::kOk;
@@ -488,7 +488,7 @@ class JsonParser {
         }
 
         if (ch != kListSeparator) {
-          LOG(std::cerr, "Expect `,`.");
+          LOG(std::cerr, "Parsing object and expect `,`.");
 
           return ErrorCode::kInvalid;
         }

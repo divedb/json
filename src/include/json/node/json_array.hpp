@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "json/nodes/json_value.hpp"
+#include "json/node/json_value.hpp"
 
 namespace json {
 
@@ -24,6 +24,11 @@ class JsonArray {
 
     return storage_[index];
   }
+
+  auto begin() { return storage_.begin(); }
+  auto begin() const { return storage_.begin(); }
+  auto end() { return storage_.end(); }
+  auto end() const { return storage_.end(); }
 
   void append(JsonValue const& json_value) { storage_.push_back(json_value); }
 

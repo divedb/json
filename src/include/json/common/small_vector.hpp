@@ -11,8 +11,7 @@
 ///
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_ADT_SMALLVECTOR_H
-#define LLVM_ADT_SMALLVECTOR_H
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -28,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace llvm {
+namespace json {
 
 template <typename T>
 class ArrayRef;
@@ -49,20 +48,21 @@ using EnableIfConvertibleToInputIterator = std::enable_if_t<std::is_convertible<
 /// Using 64 bit size is desirable for cases like SmallVector<char>, where a
 /// 32 bit size would limit the vector to ~4GB. SmallVectors are used for
 /// buffering bitcode output - which can exceed 4GB.
-template <class Size_T>
+template <typename SizeT>
 class SmallVectorBase {
  protected:
-  void* BeginX;
-  Size_T Size = 0, Capacity;
+  void* begin_x_;
+  SizeT size_ = 0;
+  SizeT capacity_;
 
   /// The maximum value of the Size_T used.
-  static constexpr size_t SizeTypeMax() {
-    return std::numeric_limits<Size_T>::max();
+  static constexpr size_t size_type_max() {
+    return std::numeric_limits<SizeT>::max();
   }
 
   SmallVectorBase() = delete;
-  SmallVectorBase(void* FirstEl, size_t TotalCapacity)
-      : BeginX(FirstEl), Capacity(static_cast<Size_T>(TotalCapacity)) {}
+  SmallVectorBase(void* first_el, size_t total_capacity)
+      : begin_x_(first_el), capacity_(static_cast<SizeT>(total_capacity)) {}
 
   /// This is a helper for \a grow() that's out of line to reduce code
   /// duplication.  This function will report a fatal error if it can't grow at
@@ -92,7 +92,7 @@ class SmallVectorBase {
   size_t size() const { return Size; }
   size_t capacity() const { return Capacity; }
 
-  [[nodiscard]] bool empty() const { return !Size; }
+  [[nodiscard]] bool empty() const { return !size_; }
 
  protected:
   /// Set the array size to \p N, which the current array must have enough
@@ -1321,7 +1321,7 @@ extern template class llvm::SmallVectorBase<uint32_t>;
 extern template class llvm::SmallVectorBase<uint64_t>;
 #endif
 
-}  // end namespace llvm
+}  // namespace json
 
 namespace std {
 
@@ -1338,5 +1338,3 @@ inline void swap(llvm::SmallVector<T, N>& LHS, llvm::SmallVector<T, N>& RHS) {
 }
 
 }  // end namespace std
-
-#endif  // LLVM_ADT_SMALLVECTOR_H

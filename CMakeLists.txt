@@ -16,8 +16,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(FindGTest)
 include_directories(${GTEST_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
+include_directories(${CMAKE_SOURCE_DIR}/tools)
 
 # add_subdirectory(src)
 add_subdirectory(test)
+add_subdirectory(tools)
 
 # add_subdirectory(example)

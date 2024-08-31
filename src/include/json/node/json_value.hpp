@@ -6,8 +6,8 @@
 #include <type_traits>
 #include <variant>
 
-#include "json/nodes/json_null.hpp"
-#include "json/nodes/json_number.hpp"
+#include "json/node/json_null.hpp"
+#include "json/node/json_number.hpp"
 
 namespace json {
 
@@ -32,6 +32,30 @@ class JsonValue {
   explicit JsonValue(std::string_view v) : storage_{std::string(v)} {}
   constexpr explicit JsonValue(JsonArray* v) : storage_{v} {}
   constexpr explicit JsonValue(JsonObject* v) : storage_{v} {}
+
+  /// Check if current node is type of object.
+  /// \return `true` if this node is an object; otherwise, return `false`.
+  constexpr bool is_object() const { return type() == JsonType::kObject; }
+
+  /// Check if current node is type of array.
+  /// \return `true` if this node is an array; otherwise, return `false`.
+  constexpr bool is_array() const { return type() == JsonType::kArray; }
+
+  /// Check if current node is type of string.
+  /// \return `true` if this node is a string; otherwise, return `false`.
+  constexpr bool is_string() const { return type() == JsonType::kString; }
+
+  /// Check if current node is type of number.
+  /// \return `true` if this node is a number; otherwise, return `false`.
+  constexpr bool is_number() const { return type() == JsonType::kNumber; }
+
+  /// Check if current node is type of bool.
+  /// \return `true` if this node is literal "true"; otherwise, return `false`.
+  constexpr bool is_bool() const { return type() == JsonType::kBool; }
+
+  /// Check if current node is type of null.
+  /// \return `true` if this node is literal "null"; otherwise, return `false`.
+  constexpr bool is_null() const { return type() == JsonType::kNull; }
 
   JsonValue& operator=(JsonNull v) {
     storage_ = v;
@@ -59,7 +83,13 @@ class JsonValue {
 
   JsonType type() const { return static_cast<JsonType>(storage_.index()); }
 
-  JsonNull as_null() const {
+  JsonNull& as_null() {
+    assert(type() == JsonType::kNull);
+
+    return std::get<JsonNull>(storage_);
+  }
+
+  JsonNull const& as_null() const {
     assert(type() == JsonType::kNull);
 
     return std::get<JsonNull>(storage_);
@@ -125,12 +155,11 @@ class JsonValue {
     return std::get<JsonObject*>(storage_);
   }
 
-  constexpr bool is_object() const { return type() == JsonType::kObject; }
-  constexpr bool is_array() const { return type() == JsonType::kArray; }
-  constexpr bool is_string() const { return type() == JsonType::kString; }
-  constexpr bool is_number() const { return type() == JsonType::kNumber; }
-  constexpr bool is_bool() const { return type() == JsonType::kBool; }
-  constexpr bool is_null() const { return type() == JsonType::kNull; }
+  constexpr bool is_simple_type() const {
+    return is_null() || is_bool() || is_number() || is_string();
+  }
+
+  constexpr bool is_aggregate_type() const { return !is_simple_type(); }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   JsonValue const& json_value) {

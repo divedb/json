@@ -3,9 +3,8 @@
 #include <initializer_list>
 #include <type_traits>
 
-#include "json/nodes/json_array.hpp"
-#include "json/nodes/json_object.hpp"
-#include "json/nodes/json_value.hpp"
+#include "json/node/json_array.hpp"
+#include "json/node/json_object.hpp"
 
 namespace json {
 
@@ -27,10 +26,8 @@ class JsonValueFactory {
   static JsonValue create_default_bool() { return create_bool(true); }
 
   template <typename T>
-    requires std::is_integral_v<T> || std::is_floating_point_v<T>
-  static JsonValue create_number(T v) {
-    return JsonValue{v};
-  }
+  requires std::is_integral_v<T> || std::is_floating_point_v<T>
+  static JsonValue create_number(T v) { return JsonValue{v}; }
 
   static JsonValue create_default_number() { return create_number(0); }
 

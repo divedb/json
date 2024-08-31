@@ -3,12 +3,13 @@
 #include <string_view>
 #include <vector>
 
-#include "json/nodes/json_value.hpp"
+#include "json/node/json_value.hpp"
 
 namespace json {
 
 class JsonNode {
  public:
+  JsonNode() = default;
   explicit JsonNode(JsonValue const& json_value) : json_value_(json_value) {}
 
   constexpr bool is_object() const { return json_value_.is_object(); }

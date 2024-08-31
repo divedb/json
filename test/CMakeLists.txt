@@ -1,11 +1,12 @@
 set(TEST_SOURCES
-    common/number_converter_test.cpp
-    common/utf8_test.cpp
+    # common/number_converter_test.cpp
+    # common/utf8_test.cpp
 
-    # common/memory_context_test.cpp
-    nodes/json_value_test.cpp
+    # # common/memory_context_test.cpp
+    # node/json_value_test.cpp
 
-    parser/json_parser_test.cpp
+    # parser/json_parser_test.cpp
+    dom/doc_test.cpp
 )
 
 foreach(test_source ${TEST_SOURCES})
@@ -14,6 +15,7 @@ foreach(test_source ${TEST_SOURCES})
     target_include_directories(${target} PRIVATE ${GTEST_INCLUDE_DIR})
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
     target_link_libraries(${target} PRIVATE ${GTEST_LIBRARIES})
+    target_link_libraries(${target} PRIVATE util)
 
     add_test(NAME ${target} COMMAND ${target})
 endforeach()

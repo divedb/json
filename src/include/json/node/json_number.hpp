@@ -31,11 +31,11 @@ class JsonNumber {
   constexpr JsonNumber() = default;
 
   template <typename T>
-    requires std::is_integral_v<T>
+  requires std::is_integral_v<T>
   constexpr explicit JsonNumber(T v) : storage_{static_cast<int64_t>(v)} {}
 
   template <typename T>
-    requires std::is_floating_point_v<T>
+  requires std::is_floating_point_v<T>
   constexpr explicit JsonNumber(T v) : storage_{static_cast<double>(v)} {}
 
   constexpr explicit JsonNumber(Storage const& storage) : storage_{storage} {}
@@ -43,16 +43,14 @@ class JsonNumber {
   constexpr bool is_integer() const { return storage_.index() == 0; }
 
   template <typename T>
-    requires std::is_integral_v<T>
-  JsonNumber& operator=(T v) {
+  requires std::is_integral_v<T> JsonNumber& operator=(T v) {
     storage_ = static_cast<int64_t>(v);
 
     return *this;
   }
 
   template <typename T>
-    requires std::is_floating_point_v<T>
-  JsonNumber& operator=(T v) {
+  requires std::is_floating_point_v<T> JsonNumber& operator=(T v) {
     storage_ = static_cast<double>(v);
 
     return *this;
